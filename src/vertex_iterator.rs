@@ -1,9 +1,11 @@
+use crate::*;
 use std::collections::HashMap;
 use std::iter;
 use std::marker::PhantomData;
-use crate::graph::Graph;
-use crate::vertex::Vertex;
-use crate::vertex_container::VertexContainer;
+use graph::EdgedGraph;
+use vertex::Vertex;
+use edge::Edge;
+use vertex_container::VertexContainer;
 
 pub struct Iter<'a, V: Vertex, I: VertexIterator<V>>(&'a mut I, PhantomData<V>);
 
@@ -15,6 +17,7 @@ impl<'a, V: Vertex, I: VertexIterator<V>> Iterator for Iter<'a, V, I> {
   }
 }
 
+/// An interface for dealing with vertex iterators over a graph.
 pub trait VertexIterator<V: Vertex> {
   /// Returns start vertex.
   fn get_start(&self) -> V;
@@ -51,16 +54,17 @@ pub trait VertexIterator<V: Vertex> {
 }
 
 #[derive(Clone)]
-pub struct DefaultVertexIter<'a, G: Graph<V>, V: Vertex, C: VertexContainer<V>> {
+pub struct DefaultVertexIter<'a, G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V>> {
   graph: &'a G,
   start: V,
   queue: C,
   predecessor_map: HashMap<V, Option<V>>,
+  phantom: PhantomData<E>
 }
 
-impl<'a, G, V, C> DefaultVertexIter<'a, G, V, C>
-where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
-  pub(crate) fn new(graph: &'a G, start: V) -> DefaultVertexIter<'a, G, V, C> where C: Sized {
+impl<'a, G, V, E, C> DefaultVertexIter<'a, G, V, E, C>
+where G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
+  pub(crate) fn new(graph: &'a G, start: V) -> DefaultVertexIter<'a, G, V, E, C> where C: Sized {
     let mut container = C::new();
     container.push(start.clone());
 
@@ -68,13 +72,14 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
       graph,
       start: start.clone(),
       queue: container,
-      predecessor_map: iter::once((start, None)).collect()
+      predecessor_map: iter::once((start, None)).collect(),
+      phantom: PhantomData
     }
   }
 }
 
-impl<'a, G, V, C> VertexIterator<V> for DefaultVertexIter<'a, G, V, C>
-where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
+impl<'a, G, V, E, C> VertexIterator<V> for DefaultVertexIter<'a, G, V, E, C>
+where G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
   fn get_start(&self) -> V {
     self.start.clone()
   }
@@ -92,7 +97,7 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
     let vertex = self.queue.pop();
 
     vertex.map(|vertex| {
-      for neighbor in self.graph.get_neighbors(vertex.clone()) {
+      for (neighbor, _) in self.graph.get_neighbors_with_edges(vertex.clone()) {
         if self.predecessor_map.contains_key(&neighbor) {
           continue;
         }
