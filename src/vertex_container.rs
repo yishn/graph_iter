@@ -1,5 +1,7 @@
+use crate::*;
 use std::cmp::Reverse;
-use std::collections::{VecDeque, BinaryHeap};
+use std::collections::{VecDeque, HashMap, BinaryHeap};
+use vertex::Vertex;
 
 #[derive(Clone)]
 pub struct DfsContainer<V>(Vec<V>);
@@ -8,7 +10,10 @@ pub struct DfsContainer<V>(Vec<V>);
 pub struct BfsContainer<V>(VecDeque<V>);
 
 #[derive(Clone)]
-pub struct DijkstraContainer<V>(BinaryHeap<Reverse<V>>);
+pub struct DijkstraContainer<V, E>(
+  BinaryHeap<Reverse<(E, usize)>>,
+  HashMap<usize, V>
+);
 
 pub trait VertexContainer<V> {
   fn new() -> Self;
@@ -44,16 +49,22 @@ impl<V> VertexContainer<V> for BfsContainer<V> {
   }
 }
 
-impl<V: Ord> VertexContainer<V> for DijkstraContainer<V> {
-  fn new() -> DijkstraContainer<V> {
-    DijkstraContainer(BinaryHeap::new())
+impl<V: Vertex, E: Ord> VertexContainer<(V, E)> for DijkstraContainer<V, E> {
+  fn new() -> DijkstraContainer<V, E> {
+    DijkstraContainer(BinaryHeap::new(), HashMap::new())
   }
 
-  fn pop(&mut self) -> Option<V> {
-    self.0.pop().map(|x| x.0)
+  fn pop(&mut self) -> Option<(V, E)> {
+    self.0.pop().map(|Reverse((edge, id))| {
+      let vertex = self.1.remove(&id).unwrap();
+      (vertex, edge)
+    })
   }
 
-  fn push(&mut self, vertex: V) {
-    self.0.push(Reverse(vertex));
+  fn push(&mut self, (vertex, edge): (V, E)) {
+    let id = self.1.len();
+
+    self.0.push(Reverse((edge, id)));
+    self.1.insert(id, vertex);
   }
 }

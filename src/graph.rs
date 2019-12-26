@@ -6,7 +6,7 @@ use vertex_iterator::{DefaultVertexIter, DijkstraVertexIter};
 
 /// Represents a directed graph.
 pub trait Graph<V: Vertex, E: Edge = ()> {
-  /// Generates a list of vertices that can be reached from `vertex`.
+  /// Generates a list of vertices that can be reached from `vertex` by traveling along an edge.
   fn get_neighbors(&self, vertex: V) -> Vec<V>;
 
   /// Returns a [`VertexIterator`](./trait.VertexIterator.html) that iterates the graph vertices
@@ -29,13 +29,13 @@ pub trait Graph<V: Vertex, E: Edge = ()> {
 /// This trait will automatically implement [`Graph`](./trait.Graph.html), so
 /// all functions in [`Graph`](./trait.Graph.html) will be available here as well.
 pub trait EdgedGraph<V: Vertex, E: Edge> {
-  /// Generates a list of vertices and their edges that can be reached from `vertex`.
+  /// Generates a list of vertices and their edges that are adjacent to `vertex`.
   fn get_neighbors_with_edges(&self, vertex: V) -> Vec<(V, E)>;
 
   /// Returns a [`VertexIterator`](./trait.VertexIterator.html) that iterates the graph vertices
-  /// in a smallest-weights-first manner.
+  /// in a smallest-weight-sum-first manner.
   fn dijkstra(&self, start: V) -> DijkstraVertexIter<'_, Self, V, E>
-  where V: Ord, E: WeightedEdge, Self: Sized {
+  where E: WeightedEdge, Self: Sized {
     DijkstraVertexIter::new(self, start)
   }
 }

@@ -114,19 +114,19 @@ where G: Graph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
 
 #[derive(Clone)]
 pub struct DijkstraVertexIter<'a, G, V, E>
-where G: EdgedGraph<V, E>, V: Vertex + Ord, E: WeightedEdge {
+where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
   graph: &'a G,
   start: V,
-  queue: DijkstraContainer<(E, V)>,
+  queue: DijkstraContainer<V, E>,
   predecessor_map: HashMap<V, Option<V>>,
   min_edge_map: HashMap<V, E>
 }
 
 impl<'a, G, V, E> DijkstraVertexIter<'a, G, V, E>
-where G: EdgedGraph<V, E>, V: Vertex + Ord, E: WeightedEdge {
+where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
   pub(crate) fn new(graph: &G, start: V) -> DijkstraVertexIter<'_, G, V, E> {
     let mut container = DijkstraContainer::new();
-    container.push((E::default(), start.clone()));
+    container.push((start.clone(), E::default()));
 
     DijkstraVertexIter {
       graph,
@@ -139,7 +139,7 @@ where G: EdgedGraph<V, E>, V: Vertex + Ord, E: WeightedEdge {
 }
 
 impl<'a, G, V, E> VertexIterator<V> for DijkstraVertexIter<'a, G, V, E>
-where G: EdgedGraph<V, E>, V: Vertex + Ord, E: WeightedEdge {
+where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
   fn get_start(&self) -> V {
     self.start.clone()
   }
@@ -156,7 +156,7 @@ where G: EdgedGraph<V, E>, V: Vertex + Ord, E: WeightedEdge {
   fn next(&mut self) -> Option<V> {
     let vertex_edge = self.queue.pop();
 
-    vertex_edge.map(|(edge, vertex)| {
+    vertex_edge.map(|(vertex, edge)| {
       for (neighbor, outgoing_edge) in self.graph.get_neighbors_with_edges(vertex.clone()) {
         let new_edge = edge.clone() + outgoing_edge;
         let mut edge_shorter = false;
@@ -172,7 +172,7 @@ where G: EdgedGraph<V, E>, V: Vertex + Ord, E: WeightedEdge {
         }
 
         if edge_shorter {
-          self.queue.push((new_edge, neighbor.clone()));
+          self.queue.push((neighbor.clone(), new_edge));
           self.predecessor_map.insert(neighbor, Some(vertex.clone()));
         }
       }
