@@ -1,5 +1,6 @@
 use crate::vertex::Vertex;
-use crate::vertex_iter::{VertexIter, DfsContainer, BfsContainer, DijkstraContainer};
+use crate::vertex_container::{DfsContainer, BfsContainer, DijkstraContainer};
+use crate::vertex_iter::VertexIter;
 
 pub trait Graph<V: Vertex> {
   fn get_neighbors(&self, vertex: V) -> Vec<V>;
@@ -11,11 +12,6 @@ pub trait Graph<V: Vertex> {
 
   fn dfs<'a>(&'a self, start: V) -> VertexIter<'a, Self, V, BfsContainer<V>>
   where Self: Sized {
-    VertexIter::new(self, start)
-  }
-
-  fn dijkstra<'a>(&'a self, start: V) -> VertexIter<'a, Self, V, DijkstraContainer<V>>
-  where Self: Sized, V: Ord {
     VertexIter::new(self, start)
   }
 }

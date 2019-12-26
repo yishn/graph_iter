@@ -1,60 +1,8 @@
-use std::cmp::Reverse;
-use std::collections::{VecDeque, HashMap, BinaryHeap};
+use std::collections::HashMap;
 use std::iter;
 use crate::graph::Graph;
 use crate::vertex::Vertex;
-
-pub type DfsContainer<V> = Vec<V>;
-pub type BfsContainer<V> = VecDeque<V>;
-pub type DijkstraContainer<V> = BinaryHeap<Reverse<V>>;
-
-pub trait VertexContainer<V> {
-  fn new() -> Self;
-  fn pop(&mut self) -> Option<V>;
-  fn push(&mut self, vertex: V);
-}
-
-impl<V> VertexContainer<V> for DfsContainer<V> {
-  fn new() -> DfsContainer<V> {
-    Vec::new()
-  }
-
-  fn pop(&mut self) -> Option<V> {
-    self.pop()
-  }
-
-  fn push(&mut self, vertex: V) {
-    self.push(vertex);
-  }
-}
-
-impl<V> VertexContainer<V> for BfsContainer<V> {
-  fn new() -> BfsContainer<V> {
-    VecDeque::new()
-  }
-
-  fn pop(&mut self) -> Option<V> {
-    self.pop_front()
-  }
-
-  fn push(&mut self, vertex: V) {
-    self.push_back(vertex);
-  }
-}
-
-impl<V: Ord> VertexContainer<V> for DijkstraContainer<V> {
-  fn new() -> DijkstraContainer<V> {
-    BinaryHeap::new()
-  }
-
-  fn pop(&mut self) -> Option<V> {
-    self.pop().map(|x| x.0)
-  }
-
-  fn push(&mut self, vertex: V) {
-    self.push(Reverse(vertex));
-  }
-}
+use crate::vertex_container::VertexContainer;
 
 pub struct VertexIter<'a, G: Graph<V>, V: Vertex, C: VertexContainer<V>> {
   graph: &'a G,
