@@ -24,27 +24,35 @@ fn construct_path_from_predecessor_map<V: Vertex>(
   }
 }
 
-pub struct VertexIter<'a, G: Graph<V>, V: Vertex, C: VertexContainer<V>> {
+pub trait VertexIterator<V>: Iterator<Item = V> {
+  fn construct_path(&mut self, target: V) -> Option<Vec<V>>;
+}
+
+pub struct DefaultVertexIter<'a, G: Graph<V>, V: Vertex, C: VertexContainer<V>> {
   graph: &'a G,
   start: V,
   queue: C,
   predecessor_map: HashMap<V, Option<V>>,
 }
 
-impl<'a, G: Graph<V>, V: Vertex, C: VertexContainer<V>> VertexIter<'a, G, V, C> {
-  pub(crate) fn new(graph: &'a G, start: V) -> VertexIter<'a, G, V, C> where C: Sized {
+impl<'a, G, V, C> DefaultVertexIter<'a, G, V, C>
+where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
+  pub(crate) fn new(graph: &'a G, start: V) -> DefaultVertexIter<'a, G, V, C> where C: Sized {
     let mut container = C::new();
     container.push(start.clone());
 
-    VertexIter {
+    DefaultVertexIter {
       graph,
       start: start.clone(),
       queue: container,
       predecessor_map: iter::once((start, None)).collect()
     }
   }
+}
 
-  pub fn construct_path(&mut self, target: V) -> Option<Vec<V>> {
+impl<'a, G, V, C> VertexIterator<V> for DefaultVertexIter<'a, G, V, C>
+where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
+  fn construct_path(&mut self, target: V) -> Option<Vec<V>> {
     if !self.predecessor_map.contains_key(&target) {
       self.find(|v| v == &target);
     }
@@ -53,7 +61,8 @@ impl<'a, G: Graph<V>, V: Vertex, C: VertexContainer<V>> VertexIter<'a, G, V, C> 
   }
 }
 
-impl<'a, G: Graph<V>, V: Vertex, C: VertexContainer<V>> Iterator for VertexIter<'a, G, V, C> {
+impl<'a, G, V, C> Iterator for DefaultVertexIter<'a, G, V, C>
+where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
   type Item = V;
 
   fn next(&mut self) -> Option<Self::Item> {

@@ -1,8 +1,8 @@
 mod graph;
 mod vertex;
 mod vertex_container;
-mod vertex_iter;
+mod vertex_iterator;
 
 pub use graph::Graph;
 pub use vertex::Vertex;
-pub use vertex_iter::VertexIter;
+pub use vertex_iterator::DefaultVertexIter;
