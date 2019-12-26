@@ -3,7 +3,7 @@ use std::iter;
 use crate::graph::Graph;
 use crate::vertex::Vertex;
 
-pub enum VertexIterType {
+pub(crate) enum VertexIterType {
   Bfs,
   Dfs
 }
@@ -17,7 +17,7 @@ pub struct VertexIter<'a, G: Graph<V>, V: Vertex> {
 }
 
 impl<'a, G: Graph<V>, V: Vertex> VertexIter<'a, G, V> {
-  pub fn new(graph: &'a G, start: V, iter_type: VertexIterType) -> VertexIter<'a, G, V> {
+  pub(crate) fn new(graph: &'a G, start: V, iter_type: VertexIterType) -> VertexIter<'a, G, V> {
     VertexIter {
       graph,
       start: start.clone(),
