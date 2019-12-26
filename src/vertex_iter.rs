@@ -4,6 +4,26 @@ use crate::graph::Graph;
 use crate::vertex::Vertex;
 use crate::vertex_container::VertexContainer;
 
+fn construct_path_from_predecessor_map<V: Vertex>(
+  predecessor_map: &HashMap<V, Option<V>>,
+  start: &V,
+  target: V
+) -> Option<Vec<V>> {
+  let mut path = vec![target];
+
+  while let Some(Some(previous)) = predecessor_map.get(path.last().unwrap()) {
+    path.push(previous.clone());
+  }
+
+  path.reverse();
+
+  if &path[0] == start {
+    Some(path)
+  } else {
+    None
+  }
+}
+
 pub struct VertexIter<'a, G: Graph<V>, V: Vertex, C: VertexContainer<V>> {
   graph: &'a G,
   start: V,
@@ -24,24 +44,12 @@ impl<'a, G: Graph<V>, V: Vertex, C: VertexContainer<V>> VertexIter<'a, G, V, C> 
     }
   }
 
-  pub fn construct_path(mut self, target: V) -> Option<Vec<V>> {
+  pub fn construct_path(&mut self, target: V) -> Option<Vec<V>> {
     if !self.predecessor_map.contains_key(&target) {
       self.find(|v| v == &target);
     }
 
-    let mut path = vec![target];
-
-    while let Some(Some(previous)) = self.predecessor_map.remove(path.last().unwrap()) {
-      path.push(previous);
-    }
-
-    path.reverse();
-
-    if path[0] == self.start {
-      Some(path)
-    } else {
-      None
-    }
+    construct_path_from_predecessor_map(&self.predecessor_map, &self.start, target)
   }
 }
 
