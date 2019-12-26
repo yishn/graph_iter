@@ -1,29 +1,78 @@
-use std::collections::{VecDeque, HashMap};
+use std::cmp::Reverse;
+use std::collections::{VecDeque, HashMap, BinaryHeap};
 use std::iter;
 use crate::graph::Graph;
 use crate::vertex::Vertex;
 
-pub(crate) enum VertexIterType {
-  Bfs,
-  Dfs
+pub type DfsContainer<V> = Vec<V>;
+pub type BfsContainer<V> = VecDeque<V>;
+pub type DijkstraContainer<V> = BinaryHeap<Reverse<V>>;
+
+pub trait VertexContainer<V> {
+  fn new() -> Self;
+  fn pop(&mut self) -> Option<V>;
+  fn push(&mut self, vertex: V);
 }
 
-pub struct VertexIter<'a, G: Graph<V>, V: Vertex> {
+impl<V> VertexContainer<V> for DfsContainer<V> {
+  fn new() -> DfsContainer<V> {
+    Vec::new()
+  }
+
+  fn pop(&mut self) -> Option<V> {
+    self.pop()
+  }
+
+  fn push(&mut self, vertex: V) {
+    self.push(vertex);
+  }
+}
+
+impl<V> VertexContainer<V> for BfsContainer<V> {
+  fn new() -> BfsContainer<V> {
+    VecDeque::new()
+  }
+
+  fn pop(&mut self) -> Option<V> {
+    self.pop_front()
+  }
+
+  fn push(&mut self, vertex: V) {
+    self.push_back(vertex);
+  }
+}
+
+impl<V: Ord> VertexContainer<V> for DijkstraContainer<V> {
+  fn new() -> DijkstraContainer<V> {
+    BinaryHeap::new()
+  }
+
+  fn pop(&mut self) -> Option<V> {
+    self.pop().map(|x| x.0)
+  }
+
+  fn push(&mut self, vertex: V) {
+    self.push(Reverse(vertex));
+  }
+}
+
+pub struct VertexIter<'a, G: Graph<V>, V: Vertex, C: VertexContainer<V>> {
   graph: &'a G,
   start: V,
-  queue: VecDeque<V>,
+  queue: C,
   predecessor_map: HashMap<V, Option<V>>,
-  iter_type: VertexIterType
 }
 
-impl<'a, G: Graph<V>, V: Vertex> VertexIter<'a, G, V> {
-  pub(crate) fn new(graph: &'a G, start: V, iter_type: VertexIterType) -> VertexIter<'a, G, V> {
+impl<'a, G: Graph<V>, V: Vertex, C: VertexContainer<V>> VertexIter<'a, G, V, C> {
+  pub(crate) fn new(graph: &'a G, start: V) -> VertexIter<'a, G, V, C> where C: Sized {
+    let mut container = C::new();
+    container.push(start.clone());
+
     VertexIter {
       graph,
       start: start.clone(),
-      queue: iter::once(start.clone()).collect(),
-      predecessor_map: iter::once((start, None)).collect(),
-      iter_type
+      queue: container,
+      predecessor_map: iter::once((start, None)).collect()
     }
   }
 
@@ -48,14 +97,11 @@ impl<'a, G: Graph<V>, V: Vertex> VertexIter<'a, G, V> {
   }
 }
 
-impl<'a, G: Graph<V>, V: Vertex> Iterator for VertexIter<'a, G, V> {
+impl<'a, G: Graph<V>, V: Vertex, C: VertexContainer<V>> Iterator for VertexIter<'a, G, V, C> {
   type Item = V;
 
   fn next(&mut self) -> Option<Self::Item> {
-    let vertex = match self.iter_type {
-      VertexIterType::Bfs => self.queue.pop_front(),
-      VertexIterType::Dfs => self.queue.pop_back()
-    };
+    let vertex = self.queue.pop();
 
     vertex.map(|vertex| {
       for neighbor in self.graph.get_neighbors(vertex.clone()) {
@@ -63,7 +109,7 @@ impl<'a, G: Graph<V>, V: Vertex> Iterator for VertexIter<'a, G, V> {
           continue;
         }
 
-        self.queue.push_back(neighbor.clone());
+        self.queue.push(neighbor.clone());
         self.predecessor_map.insert(neighbor, Some(vertex.clone()));
       }
 
