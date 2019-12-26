@@ -1,8 +1,13 @@
 use std::cmp::Reverse;
 use std::collections::{VecDeque, BinaryHeap};
 
+#[derive(Clone)]
 pub struct DfsContainer<V>(Vec<V>);
+
+#[derive(Clone)]
 pub struct BfsContainer<V>(VecDeque<V>);
+
+#[derive(Clone)]
 pub struct DijkstraContainer<V>(BinaryHeap<Reverse<V>>);
 
 pub trait VertexContainer<V> {

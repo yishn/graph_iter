@@ -1,11 +1,12 @@
 use crate::*;
 use std::collections::HashMap;
 use std::iter;
+use std::cmp::Ordering;
 use std::marker::PhantomData;
 use graph::EdgedGraph;
 use vertex::Vertex;
-use edge::Edge;
-use vertex_container::VertexContainer;
+use edge::{Edge, WeightedEdge};
+use vertex_container::{VertexContainer, DijkstraContainer};
 
 pub struct Iter<'a, V: Vertex, I: VertexIterator<V>>(&'a mut I, PhantomData<V>);
 
@@ -54,7 +55,8 @@ pub trait VertexIterator<V: Vertex> {
 }
 
 #[derive(Clone)]
-pub struct DefaultVertexIter<'a, G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V>> {
+pub struct DefaultVertexIter<'a, G, V, E, C>
+where G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
   graph: &'a G,
   start: V,
   queue: C,
@@ -64,7 +66,7 @@ pub struct DefaultVertexIter<'a, G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: Ver
 
 impl<'a, G, V, E, C> DefaultVertexIter<'a, G, V, E, C>
 where G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
-  pub(crate) fn new(graph: &'a G, start: V) -> DefaultVertexIter<'a, G, V, E, C> where C: Sized {
+  pub(crate) fn new(graph: &G, start: V) -> DefaultVertexIter<'_, G, V, E, C> where C: Sized {
     let mut container = C::new();
     container.push(start.clone());
 
@@ -104,6 +106,105 @@ where G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
 
         self.queue.push(neighbor.clone());
         self.predecessor_map.insert(neighbor, Some(vertex.clone()));
+      }
+
+      vertex
+    })
+  }
+}
+
+#[derive(Clone)]
+struct VertexEdge<V, E>(V, E);
+
+impl<V, E: Default> From<V> for VertexEdge<V, E> {
+  fn from(value: V) -> VertexEdge<V, E> {
+    VertexEdge(value, E::default())
+  }
+}
+
+impl<V, E: Ord> Ord for VertexEdge<V, E> {
+  fn cmp(&self, other: &Self) -> Ordering {
+    self.1.cmp(&other.1)
+  }
+}
+
+impl<V, E: PartialOrd> PartialOrd for VertexEdge<V, E> {
+  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    self.1.partial_cmp(&other.1)
+  }
+}
+
+impl<V, E: Eq> Eq for VertexEdge<V, E> {}
+
+impl<V, E: PartialEq> PartialEq for VertexEdge<V, E> {
+  fn eq(&self, other: &Self) -> bool {
+    self.1.eq(&other.1)
+  }
+}
+
+#[derive(Clone)]
+pub struct DijkstraVertexIter<'a, G, V, E>
+where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
+  graph: &'a G,
+  start: V,
+  queue: DijkstraContainer<VertexEdge<V, E>>,
+  predecessor_map: HashMap<V, Option<V>>,
+  min_edge_map: HashMap<V, E>
+}
+
+impl<'a, G, V, E> DijkstraVertexIter<'a, G, V, E>
+where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
+  pub(crate) fn new(graph: &G, start: V) -> DijkstraVertexIter<'_, G, V, E> {
+    let mut container = DijkstraContainer::new();
+    container.push(VertexEdge::from(start.clone()));
+
+    DijkstraVertexIter {
+      graph,
+      start: start.clone(),
+      queue: container,
+      predecessor_map: iter::once((start.clone(), None)).collect(),
+      min_edge_map: iter::once((start, E::default())).collect()
+    }
+  }
+}
+
+impl<'a, G, V, E> VertexIterator<V> for DijkstraVertexIter<'a, G, V, E>
+where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
+  fn get_start(&self) -> V {
+    self.start.clone()
+  }
+
+  fn get_predecessor(&mut self, vertex: &V) -> Option<V> {
+    if !self.predecessor_map.contains_key(vertex) {
+      self.iter().find(|v| v == vertex);
+    }
+
+    self.predecessor_map.get(vertex)
+    .and_then(|x| x.clone())
+  }
+
+  fn next(&mut self) -> Option<V> {
+    let vertex_edge = self.queue.pop();
+
+    vertex_edge.map(|VertexEdge(vertex, edge)| {
+      for (neighbor, outgoing_edge) in self.graph.get_neighbors_with_edges(vertex.clone()) {
+        let new_edge = edge.clone() + outgoing_edge;
+        let mut edge_shorter = false;
+
+        if let Some(min_edge) = self.min_edge_map.get_mut(&neighbor) {
+          if &new_edge < min_edge {
+            *min_edge = new_edge.clone();
+            edge_shorter = true;
+          }
+        } else {
+          self.min_edge_map.insert(neighbor.clone(), new_edge.clone());
+          edge_shorter = true;
+        }
+
+        if edge_shorter {
+          self.queue.push(VertexEdge(neighbor.clone(), new_edge));
+          self.predecessor_map.insert(neighbor, Some(vertex.clone()));
+        }
       }
 
       vertex
