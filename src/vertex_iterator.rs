@@ -1,7 +1,6 @@
 use crate::*;
 use std::collections::HashMap;
 use std::iter;
-use std::cmp::Ordering;
 use std::marker::PhantomData;
 use graph::EdgedGraph;
 use vertex::Vertex;
@@ -56,7 +55,7 @@ pub trait VertexIterator<V: Vertex> {
 
 #[derive(Clone)]
 pub struct DefaultVertexIter<'a, G, V, E, C>
-where G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
+where G: Graph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
   graph: &'a G,
   start: V,
   queue: C,
@@ -65,7 +64,7 @@ where G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
 }
 
 impl<'a, G, V, E, C> DefaultVertexIter<'a, G, V, E, C>
-where G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
+where G: Graph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
   pub(crate) fn new(graph: &G, start: V) -> DefaultVertexIter<'_, G, V, E, C> where C: Sized {
     let mut container = C::new();
     container.push(start.clone());
@@ -81,7 +80,7 @@ where G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
 }
 
 impl<'a, G, V, E, C> VertexIterator<V> for DefaultVertexIter<'a, G, V, E, C>
-where G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
+where G: Graph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
   fn get_start(&self) -> V {
     self.start.clone()
   }
@@ -99,7 +98,7 @@ where G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
     let vertex = self.queue.pop();
 
     vertex.map(|vertex| {
-      for (neighbor, _) in self.graph.get_neighbors_with_edges(vertex.clone()) {
+      for neighbor in self.graph.get_neighbors(vertex.clone()) {
         if self.predecessor_map.contains_key(&neighbor) {
           continue;
         }
@@ -114,49 +113,20 @@ where G: EdgedGraph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
 }
 
 #[derive(Clone)]
-struct VertexEdge<V, E>(V, E);
-
-impl<V, E: Default> From<V> for VertexEdge<V, E> {
-  fn from(value: V) -> VertexEdge<V, E> {
-    VertexEdge(value, E::default())
-  }
-}
-
-impl<V, E: Ord> Ord for VertexEdge<V, E> {
-  fn cmp(&self, other: &Self) -> Ordering {
-    self.1.cmp(&other.1)
-  }
-}
-
-impl<V, E: PartialOrd> PartialOrd for VertexEdge<V, E> {
-  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-    self.1.partial_cmp(&other.1)
-  }
-}
-
-impl<V, E: Eq> Eq for VertexEdge<V, E> {}
-
-impl<V, E: PartialEq> PartialEq for VertexEdge<V, E> {
-  fn eq(&self, other: &Self) -> bool {
-    self.1.eq(&other.1)
-  }
-}
-
-#[derive(Clone)]
 pub struct DijkstraVertexIter<'a, G, V, E>
-where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
+where G: EdgedGraph<V, E>, V: Vertex + Ord, E: WeightedEdge {
   graph: &'a G,
   start: V,
-  queue: DijkstraContainer<VertexEdge<V, E>>,
+  queue: DijkstraContainer<(E, V)>,
   predecessor_map: HashMap<V, Option<V>>,
   min_edge_map: HashMap<V, E>
 }
 
 impl<'a, G, V, E> DijkstraVertexIter<'a, G, V, E>
-where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
+where G: EdgedGraph<V, E>, V: Vertex + Ord, E: WeightedEdge {
   pub(crate) fn new(graph: &G, start: V) -> DijkstraVertexIter<'_, G, V, E> {
     let mut container = DijkstraContainer::new();
-    container.push(VertexEdge::from(start.clone()));
+    container.push((E::default(), start.clone()));
 
     DijkstraVertexIter {
       graph,
@@ -169,7 +139,7 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
 }
 
 impl<'a, G, V, E> VertexIterator<V> for DijkstraVertexIter<'a, G, V, E>
-where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
+where G: EdgedGraph<V, E>, V: Vertex + Ord, E: WeightedEdge {
   fn get_start(&self) -> V {
     self.start.clone()
   }
@@ -186,7 +156,7 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
   fn next(&mut self) -> Option<V> {
     let vertex_edge = self.queue.pop();
 
-    vertex_edge.map(|VertexEdge(vertex, edge)| {
+    vertex_edge.map(|(edge, vertex)| {
       for (neighbor, outgoing_edge) in self.graph.get_neighbors_with_edges(vertex.clone()) {
         let new_edge = edge.clone() + outgoing_edge;
         let mut edge_shorter = false;
@@ -202,7 +172,7 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
         }
 
         if edge_shorter {
-          self.queue.push(VertexEdge(neighbor.clone(), new_edge));
+          self.queue.push((new_edge, neighbor.clone()));
           self.predecessor_map.insert(neighbor, Some(vertex.clone()));
         }
       }

@@ -4,7 +4,7 @@ mod edge;
 mod vertex_container;
 mod vertex_iterator;
 
-pub use graph::{Graph, EdgedGraph};
-pub use vertex::Vertex;
-pub use edge::Edge;
+pub use graph::*;
+pub use vertex::*;
+pub use edge::*;
 pub use vertex_iterator::VertexIterator;
