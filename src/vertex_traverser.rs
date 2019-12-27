@@ -7,9 +7,9 @@ use vertex::Vertex;
 use edge::WeightedEdge;
 use vertex_container::{VertexContainer, DijkstraContainer};
 
-pub struct Iter<'a, V: Vertex, I: VertexIterator<V>>(&'a mut I, PhantomData<V>);
+pub struct Iter<'a, V: Vertex, I: VertexTraverser<V>>(&'a mut I, PhantomData<V>);
 
-impl<'a, V: Vertex, I: VertexIterator<V>> Iterator for Iter<'a, V, I> {
+impl<'a, V: Vertex, I: VertexTraverser<V>> Iterator for Iter<'a, V, I> {
   type Item = V;
 
   fn next(&mut self) -> Option<V> {
@@ -17,8 +17,8 @@ impl<'a, V: Vertex, I: VertexIterator<V>> Iterator for Iter<'a, V, I> {
   }
 }
 
-/// An interface for dealing with vertex iterators over a graph.
-pub trait VertexIterator<V: Vertex> {
+/// An interface for dealing with vertex traversers over a graph.
+pub trait VertexTraverser<V: Vertex> {
   /// Returns start vertex.
   fn get_start(&self) -> V;
 
@@ -26,10 +26,11 @@ pub trait VertexIterator<V: Vertex> {
   /// or `None` if `vertex` is the start vertex or is not reachable.
   fn get_predecessor(&mut self, vertex: &V) -> Option<V>;
 
-  /// Advances the iterator and returns the next value.
+  /// Advances the traverser and returns the next value.
   fn next(&mut self) -> Option<V>;
 
-  /// Returns an actual iterator.
+  /// Returns an [`Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html)
+  /// that let's you iterate over the traverser.
   fn iter(&mut self) -> Iter<'_, V, Self> where Self: Sized {
     Iter(self, PhantomData)
   }
@@ -54,7 +55,7 @@ pub trait VertexIterator<V: Vertex> {
 }
 
 #[derive(Clone)]
-pub struct DefaultVertexIter<'a, G, V, C>
+pub struct DefaultVertexTrav<'a, G, V, C>
 where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
   graph: &'a G,
   start: V,
@@ -62,13 +63,13 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
   predecessor_map: HashMap<V, Option<V>>
 }
 
-impl<'a, G, V, C> DefaultVertexIter<'a, G, V, C>
+impl<'a, G, V, C> DefaultVertexTrav<'a, G, V, C>
 where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
-  pub(crate) fn new(graph: &G, start: V) -> DefaultVertexIter<'_, G, V, C> where C: Sized {
+  pub(crate) fn new(graph: &G, start: V) -> DefaultVertexTrav<'_, G, V, C> where C: Sized {
     let mut container = C::new();
     container.push(start.clone());
 
-    DefaultVertexIter {
+    DefaultVertexTrav {
       graph,
       start: start.clone(),
       queue: container,
@@ -77,7 +78,7 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
   }
 }
 
-impl<'a, G, V, C> VertexIterator<V> for DefaultVertexIter<'a, G, V, C>
+impl<'a, G, V, C> VertexTraverser<V> for DefaultVertexTrav<'a, G, V, C>
 where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
   fn get_start(&self) -> V {
     self.start.clone()
@@ -111,7 +112,7 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
 }
 
 #[derive(Clone)]
-pub struct DijkstraVertexIter<'a, G, V, E>
+pub struct DijkstraVertexTrav<'a, G, V, E>
 where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
   graph: &'a G,
   start: V,
@@ -120,13 +121,13 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
   min_edge_map: HashMap<V, E>
 }
 
-impl<'a, G, V, E> DijkstraVertexIter<'a, G, V, E>
+impl<'a, G, V, E> DijkstraVertexTrav<'a, G, V, E>
 where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
-  pub(crate) fn new(graph: &G, start: V) -> DijkstraVertexIter<'_, G, V, E> {
+  pub(crate) fn new(graph: &G, start: V) -> DijkstraVertexTrav<'_, G, V, E> {
     let mut container = DijkstraContainer::new();
     container.push((start.clone(), E::default()));
 
-    DijkstraVertexIter {
+    DijkstraVertexTrav {
       graph,
       start: start.clone(),
       queue: container,
@@ -136,7 +137,7 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
   }
 }
 
-impl<'a, G, V, E> VertexIterator<V> for DijkstraVertexIter<'a, G, V, E>
+impl<'a, G, V, E> VertexTraverser<V> for DijkstraVertexTrav<'a, G, V, E>
 where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
   fn get_start(&self) -> V {
     self.start.clone()
