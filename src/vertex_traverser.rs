@@ -21,11 +21,11 @@ impl<'a, V: Vertex, T: VertexTraverser<V>> Iterator for Iter<'a, V, T> {
 /// An interface for dealing with vertex traversers over a graph.
 pub trait VertexTraverser<V: Vertex> {
   /// Returns start vertex.
-  fn get_start(&self) -> V;
+  fn first(&self) -> V;
 
   /// Returns the predecessor vertex of the given vertex
   /// or `None` if `vertex` is the start vertex or is not reachable.
-  fn get_predecessor(&mut self, vertex: &V) -> Option<V>;
+  fn predecessor(&mut self, vertex: &V) -> Option<V>;
 
   /// Advances the traverser and returns the next value.
   fn next(&mut self) -> Option<V>;
@@ -41,13 +41,13 @@ pub trait VertexTraverser<V: Vertex> {
   fn construct_path(&mut self, target: &V) -> Option<Vec<V>> {
     let mut path = vec![target.clone()];
 
-    while let Some(previous) = self.get_predecessor(path.last().unwrap()) {
+    while let Some(previous) = self.predecessor(path.last().unwrap()) {
       path.push(previous);
     }
 
     path.reverse();
 
-    if path[0] == self.get_start() {
+    if path[0] == self.first() {
       Some(path)
     } else {
       None
@@ -82,11 +82,11 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<Rc<V>> {
 
 impl<'a, G, V, C> VertexTraverser<V> for DefaultVertexTrav<'a, G, V, C>
 where G: Graph<V>, V: Vertex, C: VertexContainer<Rc<V>> {
-  fn get_start(&self) -> V {
+  fn first(&self) -> V {
     (*self.start).clone()
   }
 
-  fn get_predecessor(&mut self, vertex: &V) -> Option<V> {
+  fn predecessor(&mut self, vertex: &V) -> Option<V> {
     if !self.predecessor_map.contains_key(vertex) {
       self.iter().find(|v| v == vertex);
     }
@@ -101,7 +101,7 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<Rc<V>> {
     let vertex = self.queue.pop();
 
     vertex.map(|vertex| {
-      for neighbor in self.graph.get_neighbors(&vertex) {
+      for neighbor in self.graph.neighbors(&vertex) {
         if self.predecessor_map.contains_key(&neighbor) {
           continue;
         }
@@ -146,11 +146,11 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
 
 impl<'a, G, V, E> VertexTraverser<V> for DijkstraVertexTrav<'a, G, V, E>
 where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
-  fn get_start(&self) -> V {
+  fn first(&self) -> V {
     (*self.start).clone()
   }
 
-  fn get_predecessor(&mut self, vertex: &V) -> Option<V> {
+  fn predecessor(&mut self, vertex: &V) -> Option<V> {
     if !self.predecessor_map.contains_key(vertex) {
       self.iter().find(|v| v == vertex);
     }
@@ -165,10 +165,10 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
     let vertex_edge = self.queue.pop();
 
     vertex_edge.map(|(vertex, edge)| {
-      for neighbor in self.graph.get_neighbors(&vertex) {
+      for neighbor in self.graph.neighbors(&vertex) {
         let neighbor = Rc::new(neighbor);
         let outgoing_edge = self.graph
-          .get_edges(&vertex, &neighbor)
+          .edges(&vertex, &neighbor)
           .into_iter()
           .min();
 

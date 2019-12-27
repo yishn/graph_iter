@@ -21,7 +21,7 @@ use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
 /// }
 ///
 /// impl Graph<Position> for LatticeGraph {
-///   fn get_neighbors(&self, &(x, y): &Position) -> Vec<Position> {
+///   fn neighbors(&self, &(x, y): &Position) -> Vec<Position> {
 ///     [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)].into_iter()
 ///     .cloned()
 ///     .filter(|v| !self.blocked.contains(v))
@@ -31,7 +31,7 @@ use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
 /// ```
 pub trait Graph<V: Vertex> {
   /// Generates a list of vertices that can be reached from `vertex` by traveling along an edge.
-  fn get_neighbors(&self, vertex: &V) -> Vec<V>;
+  fn neighbors(&self, vertex: &V) -> Vec<V>;
 
   /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
   /// in a breadth-first manner.
@@ -51,7 +51,7 @@ pub trait Graph<V: Vertex> {
 /// Represents a directed, potentially infinite, multigraph, where edges contain certain data.
 pub trait EdgedGraph<V: Vertex, E: Edge>: Graph<V> {
   /// Generates a list of edges that connect `vertex` with `other`.
-  fn get_edges(&self, vertex: &V, other: &V) -> Vec<E>;
+  fn edges(&self, vertex: &V, other: &V) -> Vec<E>;
 
   /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
   /// in a smallest-weight-sum-first manner.
