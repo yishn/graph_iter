@@ -4,7 +4,7 @@ use std::iter;
 use std::marker::PhantomData;
 use graph::EdgedGraph;
 use vertex::Vertex;
-use edge::{Edge, WeightedEdge};
+use edge::WeightedEdge;
 use vertex_container::{VertexContainer, DijkstraContainer};
 
 pub struct Iter<'a, V: Vertex, I: VertexIterator<V>>(&'a mut I, PhantomData<V>);
@@ -54,18 +54,17 @@ pub trait VertexIterator<V: Vertex> {
 }
 
 #[derive(Clone)]
-pub struct DefaultVertexIter<'a, G, V, E, C>
-where G: Graph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
+pub struct DefaultVertexIter<'a, G, V, C>
+where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
   graph: &'a G,
   start: V,
   queue: C,
-  predecessor_map: HashMap<V, Option<V>>,
-  phantom: PhantomData<E>
+  predecessor_map: HashMap<V, Option<V>>
 }
 
-impl<'a, G, V, E, C> DefaultVertexIter<'a, G, V, E, C>
-where G: Graph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
-  pub(crate) fn new(graph: &G, start: V) -> DefaultVertexIter<'_, G, V, E, C> where C: Sized {
+impl<'a, G, V, C> DefaultVertexIter<'a, G, V, C>
+where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
+  pub(crate) fn new(graph: &G, start: V) -> DefaultVertexIter<'_, G, V, C> where C: Sized {
     let mut container = C::new();
     container.push(start.clone());
 
@@ -73,14 +72,13 @@ where G: Graph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
       graph,
       start: start.clone(),
       queue: container,
-      predecessor_map: iter::once((start, None)).collect(),
-      phantom: PhantomData
+      predecessor_map: iter::once((start, None)).collect()
     }
   }
 }
 
-impl<'a, G, V, E, C> VertexIterator<V> for DefaultVertexIter<'a, G, V, E, C>
-where G: Graph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
+impl<'a, G, V, C> VertexIterator<V> for DefaultVertexIter<'a, G, V, C>
+where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
   fn get_start(&self) -> V {
     self.start.clone()
   }
@@ -157,23 +155,30 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
     let vertex_edge = self.queue.pop();
 
     vertex_edge.map(|(vertex, edge)| {
-      for (neighbor, outgoing_edge) in self.graph.get_neighbors_with_edges(&vertex) {
-        let new_edge = edge.clone() + outgoing_edge;
-        let mut edge_shorter = false;
+      for neighbor in self.graph.get_neighbors(&vertex) {
+        let outgoing_edge = self.graph
+          .get_edges(&vertex, &neighbor)
+          .into_iter()
+          .min();
 
-        if let Some(min_edge) = self.min_edge_map.get_mut(&neighbor) {
-          if &new_edge < min_edge {
-            *min_edge = new_edge.clone();
+        if let Some(outgoing_edge) = outgoing_edge {
+          let new_edge = edge.clone() + outgoing_edge;
+          let mut edge_shorter = false;
+
+          if let Some(min_edge) = self.min_edge_map.get_mut(&neighbor) {
+            if &new_edge < min_edge {
+              *min_edge = new_edge.clone();
+              edge_shorter = true;
+            }
+          } else {
+            self.min_edge_map.insert(neighbor.clone(), new_edge.clone());
             edge_shorter = true;
           }
-        } else {
-          self.min_edge_map.insert(neighbor.clone(), new_edge.clone());
-          edge_shorter = true;
-        }
 
-        if edge_shorter {
-          self.queue.push((neighbor.clone(), new_edge));
-          self.predecessor_map.insert(neighbor, Some(vertex.clone()));
+          if edge_shorter {
+            self.queue.push((neighbor.clone(), new_edge));
+            self.predecessor_map.insert(neighbor, Some(vertex.clone()));
+          }
         }
       }
 

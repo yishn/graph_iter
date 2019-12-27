@@ -1,7 +1,6 @@
-use crate::*;
 use std::cmp::Reverse;
 use std::collections::{VecDeque, HashMap, BinaryHeap};
-use vertex::Vertex;
+use std::hash::Hash;
 
 #[derive(Clone)]
 pub struct DfsContainer<V>(Vec<V>);
@@ -49,7 +48,7 @@ impl<V> VertexContainer<V> for BfsContainer<V> {
   }
 }
 
-impl<V: Vertex, E: Ord> VertexContainer<(V, E)> for DijkstraContainer<V, E> {
+impl<V: Hash + Eq, E: Ord> VertexContainer<(V, E)> for DijkstraContainer<V, E> {
   fn new() -> DijkstraContainer<V, E> {
     DijkstraContainer(BinaryHeap::new(), HashMap::new())
   }
