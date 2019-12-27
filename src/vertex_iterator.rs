@@ -98,7 +98,7 @@ where G: Graph<V, E>, V: Vertex, E: Edge, C: VertexContainer<V> {
     let vertex = self.queue.pop();
 
     vertex.map(|vertex| {
-      for neighbor in self.graph.get_neighbors(vertex.clone()) {
+      for neighbor in self.graph.get_neighbors(&vertex) {
         if self.predecessor_map.contains_key(&neighbor) {
           continue;
         }
@@ -157,7 +157,7 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
     let vertex_edge = self.queue.pop();
 
     vertex_edge.map(|(vertex, edge)| {
-      for (neighbor, outgoing_edge) in self.graph.get_neighbors_with_edges(vertex.clone()) {
+      for (neighbor, outgoing_edge) in self.graph.get_neighbors_with_edges(&vertex) {
         let new_edge = edge.clone() + outgoing_edge;
         let mut edge_shorter = false;
 
