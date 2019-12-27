@@ -67,3 +67,29 @@ impl<V: Hash + Eq, E: Ord> VertexContainer<(V, E)> for DijkstraContainer<V, E> {
     self.1.insert(id, vertex);
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[derive(Hash, Eq, PartialEq, Debug)]
+  struct DijkstraKey(usize);
+
+  #[test]
+  fn dijkstra_container() {
+    let mut container = DijkstraContainer::new();
+
+    container.push((DijkstraKey(1), 5));
+    container.push((DijkstraKey(2), 8));
+    container.push((DijkstraKey(3), 2));
+    container.push((DijkstraKey(4), 1));
+    container.push((DijkstraKey(5), 10));
+
+    assert_eq!(container.pop(), Some((DijkstraKey(4), 1)));
+    assert_eq!(container.pop(), Some((DijkstraKey(3), 2)));
+    assert_eq!(container.pop(), Some((DijkstraKey(1), 5)));
+    assert_eq!(container.pop(), Some((DijkstraKey(2), 8)));
+    assert_eq!(container.pop(), Some((DijkstraKey(5), 10)));
+    assert_eq!(container.pop(), None);
+  }
+}

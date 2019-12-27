@@ -36,9 +36,9 @@ pub trait EdgedGraph<V: Vertex, E: Edge>: Graph<V> {
   /// only supports non-negative weights. In terms of our edge type `E` this means the following
   /// conditions should hold
   ///
-  /// ```
-  /// e1 + e2 >= std::cmp::max(e1, e2)
-  /// e1 >= E::default()
+  /// ```ignore
+  /// assert!(e1 + e2 >= std::cmp::max(e1, e2));
+  /// assert!(e1 >= E::default());
   /// ```
   ///
   /// for all `E` types `e1` and `e2`.
