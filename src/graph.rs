@@ -5,6 +5,29 @@ use vertex_container::{DfsContainer, BfsContainer};
 use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
 
 /// Represents a directed, potentially infinite, graph.
+///
+/// # Example
+///
+/// ```
+/// use graph_iter::Graph;
+///
+/// type Position = (i32, i32);
+///
+/// /// Implements a simple 2d integer-based grid where certain
+/// /// positions are blocked off from traversing.
+/// struct LatticeGraph {
+///   blocked: Vec<Position>
+/// }
+///
+/// impl Graph<Position> for LatticeGraph {
+///   fn get_neighbors(&self, &(x, y): &Position) -> Vec<Position> {
+///     [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)].into_iter()
+///     .cloned()
+///     .filter(|v| !self.blocked.contains(v))
+///     .collect()
+///   }
+/// }
+/// ```
 pub trait Graph<V: Vertex> {
   /// Generates a list of vertices that can be reached from `vertex` by traveling along an edge.
   fn get_neighbors(&self, vertex: &V) -> Vec<V>;
@@ -36,9 +59,9 @@ pub trait EdgedGraph<V: Vertex, E: Edge>: Graph<V> {
   /// only supports non-negative weights. In terms of our edge type `E` this means the following
   /// conditions should hold
   ///
-  /// ```ignore
-  /// assert!(e1 + e2 >= std::cmp::max(e1, e2));
-  /// assert!(e1 >= E::default());
+  /// ```text
+  /// e1 + e2 >= std::cmp::max(e1, e2)
+  /// e1 >= E::default()
   /// ```
   ///
   /// for all `E` types `e1` and `e2`.
