@@ -1,4 +1,5 @@
 use crate::*;
+use std::rc::Rc;
 use vertex::Vertex;
 use edge::{Edge, WeightedEdge};
 use vertex_container::{DfsContainer, BfsContainer};
@@ -34,14 +35,14 @@ pub trait Graph<V: Vertex> {
 
   /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
   /// in a breadth-first manner.
-  fn bfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, DfsContainer<V>>
+  fn bfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, DfsContainer<Rc<V>>>
   where Self: Sized {
     DefaultVertexTrav::new(self, start.clone())
   }
 
   /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
   /// in a depth-first manner.
-  fn dfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, BfsContainer<V>>
+  fn dfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, BfsContainer<Rc<V>>>
   where Self: Sized {
     DefaultVertexTrav::new(self, start.clone())
   }
