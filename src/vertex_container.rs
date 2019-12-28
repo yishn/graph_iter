@@ -9,10 +9,11 @@ pub struct DfsContainer<V>(Vec<V>);
 pub struct BfsContainer<V>(VecDeque<V>);
 
 #[derive(Clone)]
-pub struct DijkstraContainer<V, E>(
-  BinaryHeap<Reverse<(E, usize)>>,
-  HashMap<usize, V>
-);
+pub struct DijkstraContainer<V, E> {
+  id: usize,
+  binary_heap: BinaryHeap<Reverse<(E, usize)>>,
+  id_map: HashMap<usize, V>
+}
 
 pub trait VertexContainer<V> {
   fn new() -> Self;
@@ -50,21 +51,26 @@ impl<V> VertexContainer<V> for BfsContainer<V> {
 
 impl<V: Hash + Eq, E: Ord> VertexContainer<(V, E)> for DijkstraContainer<V, E> {
   fn new() -> DijkstraContainer<V, E> {
-    DijkstraContainer(BinaryHeap::new(), HashMap::new())
+    DijkstraContainer {
+      id: 0,
+      binary_heap: BinaryHeap::new(),
+      id_map: HashMap::new()
+    }
   }
 
   fn pop(&mut self) -> Option<(V, E)> {
-    self.0.pop().map(|Reverse((edge, id))| {
-      let vertex = self.1.remove(&id).unwrap();
+    self.binary_heap.pop().map(|Reverse((edge, id))| {
+      let vertex = self.id_map.remove(&id).unwrap();
       (vertex, edge)
     })
   }
 
   fn push(&mut self, (vertex, edge): (V, E)) {
-    let id = self.1.len();
+    let id = self.id;
+    self.id += 1;
 
-    self.0.push(Reverse((edge, id)));
-    self.1.insert(id, vertex);
+    self.binary_heap.push(Reverse((edge, id)));
+    self.id_map.insert(id, vertex);
   }
 }
 
@@ -88,7 +94,13 @@ mod tests {
     assert_eq!(container.pop(), Some((DijkstraKey(4), 1)));
     assert_eq!(container.pop(), Some((DijkstraKey(3), 2)));
     assert_eq!(container.pop(), Some((DijkstraKey(1), 5)));
+
+    container.push((DijkstraKey(1), 3));
+    container.push((DijkstraKey(6), 9));
+
+    assert_eq!(container.pop(), Some((DijkstraKey(1), 3)));
     assert_eq!(container.pop(), Some((DijkstraKey(2), 8)));
+    assert_eq!(container.pop(), Some((DijkstraKey(6), 9)));
     assert_eq!(container.pop(), Some((DijkstraKey(5), 10)));
     assert_eq!(container.pop(), None);
   }
