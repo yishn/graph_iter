@@ -7,10 +7,20 @@ use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
 /// Represents a directed, potentially infinite, graph.
 ///
 /// `Graph<V>` is a trait and is parameterized over `V`, the type of your vertices.
+/// `V` needs to implement [`Hash`], [`Eq`], and [`Clone`] traits. Vertex traversals
+/// need to clone vertices fairly often, so consider wrapping your vertices in an
+/// [`Rc`] pointer if cloning vertices takes a lot of effort.
+///
 /// Creating a graph involves two steps: Creating a `struct` to hold the graph data
 /// and then implementing `Graph<V>` for that `struct`, i.e. implementing the required
-/// trait function `neighbors` that will return a `Vec` of adjacent vertices of the
+/// trait function `neighbors` that will return a [`Vec`] of adjacent vertices of the
 /// given vertex as function argument.
+///
+/// [`Hash`]: https://doc.rust-lang.org/core/hash/trait.Hash.html
+/// [`Eq`]: https://doc.rust-lang.org/core/cmp/trait.Eq.html
+/// [`Clone`]: https://doc.rust-lang.org/core/clone/trait.Clone.html
+/// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
+/// [`Vec`]: https://doc.rust-lang.org/alloc/vec/struct.Vec.html
 ///
 /// # Example
 ///
@@ -45,7 +55,7 @@ use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
 /// assert_eq!(path[7], (0, 5));
 /// ```
 pub trait Graph<V: Vertex> {
-  /// Generates a list of vertices that can be reached from `vertex` by traveling along an edge.
+  /// Generates a list of adjacent vertices that can be reached from `vertex` by traveling along an edge.
   fn neighbors(&self, vertex: &V) -> Vec<V>;
 
   /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
@@ -64,6 +74,17 @@ pub trait Graph<V: Vertex> {
 }
 
 /// Represents a directed, potentially infinite, multigraph, where edges contain certain data.
+///
+/// `EdgedGraph<V, E>` is a trait and is parameterized over `V`, the type of your vertices,
+/// and `E`, the type of your edges. `E` needs to implement the [`Clone`] trait. Vertex
+/// traversals need to clone edges fairly often, so consider wrapping your edges in an
+/// [`Rc`] pointer if cloning vertices takes a lot of effort.
+///
+/// This trait requires your `struct` to implement [`Graph<V>`] as well.
+///
+/// [`Clone`]: https://doc.rust-lang.org/core/clone/trait.Clone.html
+/// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
+/// [`Graph<V>`]: ./trait.Graph.html
 ///
 /// # Example
 ///
@@ -106,7 +127,13 @@ pub trait EdgedGraph<V: Vertex, E: Edge>: Graph<V> {
   fn edges(&self, vertex: &V, other: &V) -> Vec<E>;
 
   /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
-  /// in a smallest-weight-sum-first manner.
+  /// in a smallest-weight-sum-first manner. This function requires your edge type `E` to implement
+  /// the [`WeightedEdge`](./trait.WeightedEdge.html) trait, i.e. additionally implement [`Ord`],
+  /// [`Add`], and [`Default`].
+  ///
+  /// [`Ord`]: https://doc.rust-lang.org/core/cmp/trait.Ord.html
+  /// [`Add`]: https://doc.rust-lang.org/core/ops/arith/trait.Add.html
+  /// [`Default`]: https://doc.rust-lang.org/core/default/trait.Default.html
   ///
   /// Keep in mind that the [Dijkstra's algorithm](https://en.wikipedia.org/wiki/Dijkstra's_algorithm)
   /// only supports non-negative weights. In terms of our edge type `E` this means the following
