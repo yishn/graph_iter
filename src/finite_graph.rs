@@ -1,13 +1,19 @@
 use crate::*;
 use std::collections::HashMap;
 use std::hash::Hash;
-use derive_more::AddAssign;
 use graph::Graph;
 use edge::Edge;
 
-#[derive(Clone, Copy, Hash, Eq, PartialEq, AddAssign)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Id(usize);
 
+impl Id {
+  fn next(&mut self) {
+    self.0 += 1;
+  }
+}
+
+#[derive(Clone)]
 pub struct FiniteGraph<V, E> {
   id: Id,
   vertices_map: HashMap<Id, V>,
@@ -56,7 +62,7 @@ impl<V, E> FiniteGraph<V, E> {
   pub fn insert_vertex(&mut self, data: V) -> Id {
     let id = self.id;
 
-    self.id += Id(1);
+    self.id.next();
     self.vertices_map.insert(id, data);
 
     id
@@ -89,8 +95,8 @@ impl<V, E> FiniteGraph<V, E> {
     }
 
     let id = self.id;
-    self.id += Id(1);
 
+    self.id.next();
     self.edges_map.insert(id, data);
 
     if let Some(neighbors) = self.neighbors_map.get_mut(&start) {

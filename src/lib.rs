@@ -1,5 +1,3 @@
-extern crate derive_more;
-
 mod graph;
 mod finite_graph;
 mod vertex;
