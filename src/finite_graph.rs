@@ -25,6 +25,10 @@ impl<V, E> FiniteGraph<V, E> {
     }
   }
 
+  pub fn len(&self) -> (usize, usize) {
+    (self.vertices_map.len(), self.edges_map.len())
+  }
+
   pub fn vertices(&self) -> impl Iterator<Item = &V> {
     self.vertices_map.values()
   }
