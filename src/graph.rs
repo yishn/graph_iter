@@ -1,11 +1,16 @@
 use crate::*;
-use std::rc::Rc;
 use vertex::Vertex;
 use edge::{Edge, WeightedEdge};
 use vertex_container::{DfsContainer, BfsContainer};
 use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
 
 /// Represents a directed, potentially infinite, graph.
+///
+/// `Graph<V>` is a trait and is parameterized over `V`, the type of your vertices.
+/// Creating a graph involves two steps: Creating a `struct` to hold the graph data
+/// and then implementing `Graph<V>` for that `struct`, i.e. implementing the required
+/// trait function `neighbors` that will return a `Vec` of adjacent vertices of the
+/// given vertex as function argument.
 ///
 /// # Example
 ///
@@ -45,14 +50,14 @@ pub trait Graph<V: Vertex> {
 
   /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
   /// in a breadth-first manner.
-  fn bfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, BfsContainer<Rc<V>>>
+  fn bfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, BfsContainer<V>>
   where Self: Sized {
     DefaultVertexTrav::new(self, start.clone())
   }
 
   /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
   /// in a depth-first manner.
-  fn dfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, DfsContainer<Rc<V>>>
+  fn dfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, DfsContainer<V>>
   where Self: Sized {
     DefaultVertexTrav::new(self, start.clone())
   }
@@ -67,6 +72,8 @@ pub trait Graph<V: Vertex> {
 ///
 /// type Position = (i32, i32);
 ///
+/// /// Implements a fully connected graph on the given vertices
+/// /// that are points on an integer-based 2d grid.
 /// struct FullyConnectedGraph {
 ///   vertices: Vec<Position>
 /// }

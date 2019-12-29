@@ -2,7 +2,6 @@ use crate::*;
 use std::collections::HashMap;
 use std::iter;
 use std::marker::PhantomData;
-use std::rc::Rc;
 use graph::EdgedGraph;
 use vertex::Vertex;
 use edge::WeightedEdge;
@@ -57,23 +56,22 @@ pub trait VertexTraverser<V: Vertex> {
 
 #[derive(Clone)]
 pub struct DefaultVertexTrav<'a, G, V, C>
-where G: Graph<V>, V: Vertex, C: VertexContainer<Rc<V>> {
+where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
   graph: &'a G,
-  start: Rc<V>,
+  start: V,
   queue: C,
-  predecessor_map: HashMap<Rc<V>, Option<Rc<V>>>
+  predecessor_map: HashMap<V, Option<V>>
 }
 
 impl<'a, G, V, C> DefaultVertexTrav<'a, G, V, C>
-where G: Graph<V>, V: Vertex, C: VertexContainer<Rc<V>> {
+where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
   pub(crate) fn new(graph: &G, start: V) -> DefaultVertexTrav<'_, G, V, C> where C: Sized {
-    let start = Rc::new(start);
     let mut container = C::new();
-    container.push(Rc::clone(&start));
+    container.push(start.clone());
 
     DefaultVertexTrav {
       graph,
-      start: Rc::clone(&start),
+      start: start.clone(),
       queue: container,
       predecessor_map: iter::once((start, None)).collect()
     }
@@ -81,9 +79,9 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<Rc<V>> {
 }
 
 impl<'a, G, V, C> VertexTraverser<V> for DefaultVertexTrav<'a, G, V, C>
-where G: Graph<V>, V: Vertex, C: VertexContainer<Rc<V>> {
+where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
   fn first(&self) -> V {
-    (*self.start).clone()
+    self.start.clone()
   }
 
   fn predecessor(&mut self, vertex: &V) -> Option<V> {
@@ -92,9 +90,7 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<Rc<V>> {
     }
 
     self.predecessor_map.get(vertex)
-    .and_then(|predecessor| {
-      predecessor.clone().map(|v| (*v).clone())
-    })
+    .and_then(|predecessor| predecessor.clone())
   }
 
   fn next(&mut self) -> Option<V> {
@@ -106,13 +102,11 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<Rc<V>> {
           continue;
         }
 
-        let neighbor = Rc::new(neighbor);
-
-        self.queue.push(Rc::clone(&neighbor));
-        self.predecessor_map.insert(Rc::clone(&neighbor), Some(Rc::clone(&vertex)));
+        self.queue.push(neighbor.clone());
+        self.predecessor_map.insert(neighbor.clone(), Some(vertex.clone()));
       }
 
-      (*vertex).clone()
+      vertex
     })
   }
 }
@@ -121,25 +115,24 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<Rc<V>> {
 pub struct DijkstraVertexTrav<'a, G, V, E>
 where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
   graph: &'a G,
-  start: Rc<V>,
-  queue: DijkstraContainer<Rc<V>, Rc<E>>,
-  predecessor_map: HashMap<Rc<V>, Option<Rc<V>>>,
-  min_edge_map: HashMap<Rc<V>, Rc<E>>
+  start: V,
+  queue: DijkstraContainer<V, E>,
+  predecessor_map: HashMap<V, Option<V>>,
+  min_edge_map: HashMap<V, E>
 }
 
 impl<'a, G, V, E> DijkstraVertexTrav<'a, G, V, E>
 where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
   pub(crate) fn new(graph: &G, start: V) -> DijkstraVertexTrav<'_, G, V, E> {
-    let start = Rc::new(start);
     let mut container = DijkstraContainer::new();
-    container.push((Rc::clone(&start), Rc::new(E::default())));
+    container.push((start.clone(), E::default()));
 
     DijkstraVertexTrav {
       graph,
-      start: Rc::clone(&start),
+      start: start.clone(),
       queue: container,
-      predecessor_map: iter::once((Rc::clone(&start), None)).collect(),
-      min_edge_map: iter::once((start, Rc::new(E::default()))).collect()
+      predecessor_map: iter::once((start.clone(), None)).collect(),
+      min_edge_map: iter::once((start, E::default())).collect()
     }
   }
 }
@@ -147,7 +140,7 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
 impl<'a, G, V, E> VertexTraverser<V> for DijkstraVertexTrav<'a, G, V, E>
 where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
   fn first(&self) -> V {
-    (*self.start).clone()
+    self.start.clone()
   }
 
   fn predecessor(&mut self, vertex: &V) -> Option<V> {
@@ -156,9 +149,7 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
     }
 
     self.predecessor_map.get(vertex)
-    .and_then(|predecessor| {
-      predecessor.clone().map(|v| (*v).clone())
-    })
+    .and_then(|predecessor| predecessor.clone())
   }
 
   fn next(&mut self) -> Option<V> {
@@ -166,34 +157,33 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
 
     vertex_edge.map(|(vertex, edge)| {
       for neighbor in self.graph.neighbors(&vertex) {
-        let neighbor = Rc::new(neighbor);
         let outgoing_edge = self.graph
           .edges(&vertex, &neighbor)
           .into_iter()
           .min();
 
         if let Some(outgoing_edge) = outgoing_edge {
-          let new_edge = Rc::new((*edge).clone() + outgoing_edge);
+          let new_edge = edge.clone() + outgoing_edge;
           let mut edge_shorter = false;
 
           if let Some(min_edge) = self.min_edge_map.get_mut(&neighbor) {
             if &new_edge < min_edge {
-              *min_edge = Rc::clone(&new_edge);
+              *min_edge = new_edge.clone();
               edge_shorter = true;
             }
           } else {
-            self.min_edge_map.insert(Rc::clone(&neighbor), Rc::clone(&new_edge));
+            self.min_edge_map.insert(neighbor.clone(), new_edge.clone());
             edge_shorter = true;
           }
 
           if edge_shorter {
-            self.queue.push((Rc::clone(&neighbor), new_edge));
-            self.predecessor_map.insert(neighbor, Some(Rc::clone(&vertex)));
+            self.queue.push((neighbor.clone(), new_edge));
+            self.predecessor_map.insert(neighbor, Some(vertex.clone()));
           }
         }
       }
 
-      (*vertex).clone()
+      vertex
     })
   }
 }
