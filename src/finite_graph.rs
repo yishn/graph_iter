@@ -62,8 +62,9 @@ impl<V, E> FiniteGraph<V, E> {
     id
   }
 
-  pub fn remove_vertex(&mut self, vertex: Id) {
-    self.vertices_map.remove(&vertex);
+  pub fn remove_vertex(&mut self, vertex: Id) -> Option<V> {
+    let result = self.vertices_map.remove_entry(&vertex)
+      .map(|(_, data)| data);
 
     let neighbors = self.neighbors_map.remove_entry(&vertex)
       .map(|(_, neighbors)| neighbors)
@@ -78,6 +79,8 @@ impl<V, E> FiniteGraph<V, E> {
         }
       }
     }
+
+    result
   }
 
   pub fn insert_edge(&mut self, start: Id, end: Id, data: E) -> Option<Id> {
