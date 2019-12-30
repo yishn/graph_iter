@@ -31,16 +31,37 @@ impl<V, E> FiniteGraph<V, E> {
     }
   }
 
+  pub fn with_capacity(vertex_capacity: usize, edge_capacity: usize) -> FiniteGraph<V, E> {
+    FiniteGraph {
+      id: Id(0),
+      vertices_map: HashMap::with_capacity(vertex_capacity),
+      edges_map: HashMap::with_capacity(edge_capacity),
+      neighbors_map: HashMap::with_capacity(vertex_capacity)
+    }
+  }
+
   pub fn len(&self) -> (usize, usize) {
     (self.vertices_map.len(), self.edges_map.len())
+  }
+
+  pub fn capacity(&self) -> (usize, usize) {
+    (self.vertices_map.capacity(), self.edges_map.capacity())
   }
 
   pub fn vertices(&self) -> impl Iterator<Item = &V> {
     self.vertices_map.values()
   }
 
+  pub fn vertices_mut(&mut self) -> impl Iterator<Item = &mut V> {
+    self.vertices_map.values_mut()
+  }
+
   pub fn edges(&self) -> impl Iterator<Item = &E> {
     self.edges_map.values()
+  }
+
+  pub fn edges_mut(&mut self) -> impl Iterator<Item = &mut E> {
+    self.edges_map.values_mut()
   }
 
   pub fn get(&self, vertex: Id) -> Option<&V> {
