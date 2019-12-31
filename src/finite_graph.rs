@@ -1,6 +1,7 @@
 use crate::*;
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::marker::PhantomData;
 use graph::Graph;
 use edge::Edge;
 
@@ -142,31 +143,66 @@ impl<V, E> FiniteGraph<V, E> {
   }
 }
 
-impl<V, E> Graph<Id> for FiniteGraph<V, E> {
-  type NeighborsIterator = Vec<Id>;
+pub struct NeighborsIter<'a, I: Iterator<Item = &'a (Id, Id)>> {
+  iter: Option<I>
+}
 
-  fn neighbors(&self, vertex: &Id) -> Vec<Id> {
-    self.neighbors_map.get(&vertex)
-    .map(|neighbors| {
-      neighbors.iter()
+impl<'a, I: Iterator<Item = &'a (Id, Id)>> Iterator for NeighborsIter<'a, I> {
+  type Item = Id;
+
+  fn next(&mut self) -> Option<Id> {
+    self.iter.as_mut().and_then(|iter| {
+      iter.next()
       .map(|(neighbor, _)| *neighbor)
-      .collect()
     })
-    .unwrap_or_else(|| vec![])
   }
 }
 
-impl<V, E: Edge> EdgedGraph<Id, E> for FiniteGraph<V, E> {
-  type EdgesIterator = Vec<E>;
+impl<'a, V, E: 'a> Graph<'a, Id> for FiniteGraph<V, E> {
+  type NeighborsIterator = NeighborsIter<'a, std::slice::Iter<'a, (Id, Id)>>;
 
-  fn edges(&self, vertex: &Id, other: &Id) -> Vec<E> {
-    self.neighbors_map.get(vertex)
-    .map(|neighbors| {
-      neighbors.iter()
-      .filter(|(neighbor, _)| neighbor == other)
-      .filter_map(|(_, edge)| self.get_edge(*edge).cloned())
-      .collect()
+  fn neighbors(&'a self, vertex: &Id) -> Self::NeighborsIterator {
+    NeighborsIter {
+      iter: self.neighbors_map.get(&vertex).map(|x| x.iter())
+    }
+  }
+}
+
+pub struct EdgesIter<'a, V, E, I: Iterator<Item = &'a (Id, Id)>> {
+  graph: &'a FiniteGraph<V, E>,
+  iter: Option<I>,
+  vertex: Id,
+  phantom: PhantomData<&'a (V, E)>
+}
+
+impl<'a, V, E: Edge, I: Iterator<Item = &'a (Id, Id)>> Iterator for EdgesIter<'a, V, E, I> {
+  type Item = E;
+
+  fn next(&mut self) -> Option<E> {
+    let graph = self.graph;
+    let vertex = self.vertex;
+
+    self.iter.as_mut().and_then(|iter| loop {
+      match iter.next() {
+        Some((neighbor, edge)) if neighbor == &vertex => {
+          break graph.get_edge(*edge).cloned();
+        },
+        None => break None,
+        _ => {}
+      }
     })
-    .unwrap_or_else(|| vec![])
+  }
+}
+
+impl<'a, V: 'a, E: Edge + 'a> EdgedGraph<'a, Id, E> for FiniteGraph<V, E> {
+  type EdgesIterator = EdgesIter<'a, V, E, std::slice::Iter<'a, (Id, Id)>>;
+
+  fn edges(&'a self, vertex: &Id, other: &Id) -> Self::EdgesIterator {
+    EdgesIter {
+      graph: self,
+      iter: self.neighbors_map.get(vertex).map(|x| x.iter()),
+      vertex: *other,
+      phantom: PhantomData
+    }
   }
 }

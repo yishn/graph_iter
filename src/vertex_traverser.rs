@@ -56,7 +56,7 @@ pub trait VertexTraverser<V: Vertex> {
 
 #[derive(Clone)]
 pub struct DefaultVertexTrav<'a, G, V, C>
-where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
+where G: Graph<'a, V>, V: Vertex, C: VertexContainer<V> {
   graph: &'a G,
   start: V,
   queue: C,
@@ -64,8 +64,8 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
 }
 
 impl<'a, G, V, C> DefaultVertexTrav<'a, G, V, C>
-where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
-  pub(crate) fn new(graph: &G, start: V) -> DefaultVertexTrav<'_, G, V, C> where C: Sized {
+where G: Graph<'a, V>, V: Vertex, C: VertexContainer<V> {
+  pub(crate) fn new(graph: &'a G, start: V) -> DefaultVertexTrav<'a, G, V, C> where C: Sized {
     let mut container = C::new();
     container.push(start.clone());
 
@@ -79,7 +79,7 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
 }
 
 impl<'a, G, V, C> VertexTraverser<V> for DefaultVertexTrav<'a, G, V, C>
-where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
+where G: Graph<'a, V>, V: Vertex, C: VertexContainer<V> {
   fn first(&self) -> V {
     self.start.clone()
   }
@@ -113,7 +113,7 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
 
 #[derive(Clone)]
 pub struct DijkstraVertexTrav<'a, G, V, E>
-where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
+where G: EdgedGraph<'a, V, E>, V: Vertex, E: WeightedEdge {
   graph: &'a G,
   start: V,
   queue: DijkstraContainer<V, E>,
@@ -122,8 +122,8 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
 }
 
 impl<'a, G, V, E> DijkstraVertexTrav<'a, G, V, E>
-where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
-  pub(crate) fn new(graph: &G, start: V) -> DijkstraVertexTrav<'_, G, V, E> {
+where G: EdgedGraph<'a, V, E>, V: Vertex, E: WeightedEdge {
+  pub(crate) fn new(graph: &'a G, start: V) -> DijkstraVertexTrav<'a, G, V, E> {
     let mut container = DijkstraContainer::new();
     container.push((start.clone(), E::default()));
 
@@ -138,7 +138,7 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
 }
 
 impl<'a, G, V, E> VertexTraverser<V> for DijkstraVertexTrav<'a, G, V, E>
-where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
+where G: EdgedGraph<'a, V, E>, V: Vertex, E: WeightedEdge {
   fn first(&self) -> V {
     self.start.clone()
   }
