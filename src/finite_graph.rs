@@ -158,10 +158,10 @@ impl<'a, I: Iterator<Item = &'a (Id, Id)>> Iterator for NeighborsIter<'a, I> {
   }
 }
 
-impl<'a, V, E: 'a> Graph<'a, Id> for FiniteGraph<V, E> {
+impl<'a, V, E> Graph<Id> for &'a FiniteGraph<V, E> {
   type NeighborsIterator = NeighborsIter<'a, std::slice::Iter<'a, (Id, Id)>>;
 
-  fn neighbors(&'a self, vertex: &Id) -> Self::NeighborsIterator {
+  fn neighbors(&self, vertex: &Id) -> Self::NeighborsIterator {
     NeighborsIter {
       iter: self.neighbors_map.get(&vertex).map(|x| x.iter())
     }
@@ -194,15 +194,46 @@ impl<'a, V, E: Edge, I: Iterator<Item = &'a (Id, Id)>> Iterator for EdgesIter<'a
   }
 }
 
-impl<'a, V: 'a, E: Edge + 'a> EdgedGraph<'a, Id, E> for FiniteGraph<V, E> {
+impl<'a, V, E: Edge> EdgedGraph<Id, E> for &'a FiniteGraph<V, E> {
   type EdgesIterator = EdgesIter<'a, V, E, std::slice::Iter<'a, (Id, Id)>>;
 
-  fn edges(&'a self, vertex: &Id, other: &Id) -> Self::EdgesIterator {
+  fn edges(&self, vertex: &Id, other: &Id) -> Self::EdgesIterator {
     EdgesIter {
       graph: self,
       iter: self.neighbors_map.get(vertex).map(|x| x.iter()),
       vertex: *other,
       phantom: PhantomData
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  type Position = (i32, i32);
+
+  #[test]
+  fn insert_vertices_and_edges() {
+    let mut graph = FiniteGraph::<Position, ()>::new();
+
+    let a = graph.insert_vertex((0, 0));
+    let b = graph.insert_vertex((0, 1));
+    let c = graph.insert_vertex((1, 1));
+    let d = graph.insert_vertex((1, 0));
+
+    graph.insert_edge(a, b, ());
+    graph.insert_edge(a, c, ());
+    graph.insert_edge(a, d, ());
+    graph.insert_edge(b, c, ());
+    graph.insert_edge(d, c, ());
+
+    let graph_ref = &graph;
+
+    assert_eq!(graph.vertices().count(), 4);
+    assert_eq!(graph_ref.neighbors(&a).count(), 3);
+    assert_eq!(graph_ref.neighbors(&b).count(), 1);
+    assert_eq!(graph_ref.neighbors(&c).count(), 0);
+    assert_eq!(graph_ref.neighbors(&d).count(), 1);
   }
 }
