@@ -143,6 +143,8 @@ impl<V, E> FiniteGraph<V, E> {
 }
 
 impl<V, E> Graph<Id> for FiniteGraph<V, E> {
+  type NeighborsIterator = Vec<Id>;
+
   fn neighbors(&self, vertex: &Id) -> Vec<Id> {
     self.neighbors_map.get(&vertex)
     .map(|neighbors| {
@@ -155,6 +157,8 @@ impl<V, E> Graph<Id> for FiniteGraph<V, E> {
 }
 
 impl<V, E: Edge> EdgedGraph<Id, E> for FiniteGraph<V, E> {
+  type EdgesIterator = Vec<E>;
+
   fn edges(&self, vertex: &Id, other: &Id) -> Vec<E> {
     self.neighbors_map.get(vertex)
     .map(|neighbors| {

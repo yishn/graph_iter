@@ -36,6 +36,8 @@ use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
 /// }
 ///
 /// impl Graph<Position> for LatticeGraph {
+///   type NeighborsIterator = Vec<Position>;
+///
 ///   fn neighbors(&self, &(x, y): &Position) -> Vec<Position> {
 ///     [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)].into_iter()
 ///     .filter(|&v| !self.blocked.contains(v))
@@ -55,8 +57,10 @@ use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
 /// assert_eq!(path[7], (0, 5));
 /// ```
 pub trait Graph<V: Vertex> {
+  type NeighborsIterator: IntoIterator<Item = V>;
+
   /// Generates a list of adjacent vertices that can be reached from `vertex` by traveling along an edge.
-  fn neighbors(&self, vertex: &V) -> Vec<V>;
+  fn neighbors(&self, vertex: &V) -> Self::NeighborsIterator;
 
   /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
   /// in a breadth-first manner.
@@ -100,6 +104,8 @@ pub trait Graph<V: Vertex> {
 /// }
 ///
 /// impl Graph<Position> for FullyConnectedGraph {
+///   type NeighborsIterator = Vec<Position>;
+///
 ///   fn neighbors(&self, vertex: &Position) -> Vec<Position> {
 ///     self.vertices.iter()
 ///     .filter(|&v| v != vertex)
@@ -109,6 +115,8 @@ pub trait Graph<V: Vertex> {
 /// }
 ///
 /// impl EdgedGraph<Position, u32> for FullyConnectedGraph {
+///   type EdgesIterator = Vec<u32>;
+///
 ///   fn edges(&self, &(x1, y1): &Position, &(x2, y2): &Position) -> Vec<u32> {
 ///     vec![(x2 - x1).abs() as u32 + (y2 - y1).pow(2) as u32]
 ///   }
@@ -123,8 +131,10 @@ pub trait Graph<V: Vertex> {
 /// assert_eq!(path, [(0, 0), (2, 5), (4, 7), (10, 10)]);
 /// ```
 pub trait EdgedGraph<V: Vertex, E: Edge>: Graph<V> {
+  type EdgesIterator: IntoIterator<Item = E>;
+
   /// Generates a list of edges that connect `vertex` with `other`.
-  fn edges(&self, vertex: &V, other: &V) -> Vec<E>;
+  fn edges(&self, vertex: &V, other: &V) -> Self::EdgesIterator;
 
   /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
   /// in a smallest-weight-sum-first manner. This function requires your edge type `E` to implement
@@ -162,6 +172,8 @@ mod tests {
   }
 
   impl Graph<Position> for LatticeGraph {
+    type NeighborsIterator = Vec<Position>;
+
     fn neighbors(&self, &(x, y): &Position) -> Vec<Position> {
       [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)].into_iter()
       .cloned()
@@ -175,6 +187,8 @@ mod tests {
   }
 
   impl Graph<Position> for FullyConnectedGraph {
+    type NeighborsIterator = Vec<Position>;
+
     fn neighbors(&self, vertex: &Position) -> Vec<Position> {
       self.vertices.iter()
       .filter(|&v| v != vertex)
@@ -184,6 +198,8 @@ mod tests {
   }
 
   impl EdgedGraph<Position, u32> for FullyConnectedGraph {
+    type EdgesIterator = Vec<u32>;
+
     fn edges(&self, &(x1, y1): &Position, &(x2, y2): &Position) -> Vec<u32> {
       vec![(x2 - x1).abs() as u32 + (y2 - y1).pow(2) as u32]
     }
