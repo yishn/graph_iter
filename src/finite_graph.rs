@@ -8,8 +8,9 @@ use edge::Edge;
 pub struct Id(usize);
 
 impl Id {
-  fn next(&mut self) {
+  fn next(&mut self) -> Id {
     self.0 += 1;
+    *self
   }
 }
 
@@ -17,7 +18,7 @@ impl Id {
 pub struct FiniteGraph<V, E> {
   id: Id,
   vertices_map: HashMap<Id, V>,
-  edges_map: HashMap<Id, E>,
+  edges_map: HashMap<Id, (E, Id, Id)>,
   neighbors_map: HashMap<Id, Vec<(Id, Id)>>
 }
 
@@ -58,10 +59,12 @@ impl<V, E> FiniteGraph<V, E> {
 
   pub fn edges(&self) -> impl Iterator<Item = &E> {
     self.edges_map.values()
+    .map(|(e, _, _)| e)
   }
 
   pub fn edges_mut(&mut self) -> impl Iterator<Item = &mut E> {
     self.edges_map.values_mut()
+    .map(|(e, _, _)| e)
   }
 
   pub fn get(&self, vertex: Id) -> Option<&V> {
@@ -73,29 +76,23 @@ impl<V, E> FiniteGraph<V, E> {
   }
 
   pub fn get_edge(&self, edge: Id) -> Option<&E> {
-    self.edges_map.get(&edge)
+    self.edges_map.get(&edge).map(|(e, _, _)| e)
   }
 
   pub fn get_edge_mut(&mut self, edge: Id) -> Option<&mut E> {
-    self.edges_map.get_mut(&edge)
+    self.edges_map.get_mut(&edge).map(|(e, _, _)| e)
   }
 
   pub fn insert_vertex(&mut self, data: V) -> Id {
-    let id = self.id;
-
-    self.id.next();
+    let id = self.id.next();
     self.vertices_map.insert(id, data);
 
     id
   }
 
   pub fn remove_vertex(&mut self, vertex: Id) -> Option<V> {
-    let result = self.vertices_map.remove_entry(&vertex)
-      .map(|(_, data)| data);
-
-    let neighbors = self.neighbors_map.remove_entry(&vertex)
-      .map(|(_, neighbors)| neighbors)
-      .unwrap_or_else(|| vec![]);
+    let result = self.vertices_map.remove(&vertex);
+    let neighbors = self.neighbors_map.remove(&vertex).unwrap_or_else(|| vec![]);
 
     for (neighbor, _) in neighbors {
       if let Some(neighbors) = self.neighbors_map.get_mut(&neighbor) {
@@ -110,35 +107,49 @@ impl<V, E> FiniteGraph<V, E> {
     result
   }
 
+  fn insert_edge_id(&mut self, start: Id, end: Id, edge: Id) -> Option<Id> {
+    if let Some(neighbors) = self.neighbors_map.get_mut(&start) {
+      neighbors.push((end, edge));
+    } else {
+      self.neighbors_map.insert(start, vec![(end, edge)]);
+    }
+
+    Some(edge)
+  }
+
   pub fn insert_edge(&mut self, start: Id, end: Id, data: E) -> Option<Id> {
     if !self.vertices_map.contains_key(&start) || !self.vertices_map.contains_key(&end) {
       return None;
     }
 
-    let id = self.id;
+    let id = self.id.next();
+    self.edges_map.insert(id, (data, start, end));
 
-    self.id.next();
-    self.edges_map.insert(id, data);
-
-    if let Some(neighbors) = self.neighbors_map.get_mut(&start) {
-      neighbors.push((end, id));
-    } else {
-      self.neighbors_map.insert(start, vec![(end, id)]);
-    }
-
-    Some(id)
+    self.insert_edge_id(start, end, id)
   }
 
-  pub fn insert_bi_edge(&mut self, vertex: Id, other: Id, data: E) -> Option<(Id, Id)>
-  where E: Clone {
-    let edge1 = self.insert_edge(vertex, other, data.clone());
-    let mut edge2 = None;
+  pub fn insert_bi_edge(&mut self, vertex: Id, other: Id, data: E) -> Option<Id> {
+    let edge = self.insert_edge(vertex, other, data);
 
-    if let Some(_) = &edge1 {
-      edge2 = self.insert_edge(other, vertex, data);
+    if let &Some(id) = &edge {
+      self.insert_edge_id(other, vertex, id);
     }
 
-    edge1.and_then(|e1| edge2.map(|e2| (e1, e2)))
+    edge
+  }
+
+  pub fn remove_edge(&mut self, edge: Id) -> Option<E> {
+    self.edges_map.remove(&edge).map(|(result, vertex, other)| {
+      for vertex in &[vertex, other] {
+        self.neighbors_map.get_mut(&vertex).map(|neighbors| {
+          neighbors.iter().position(|(_, e)| e == &edge).map(|index| {
+            neighbors.remove(index);
+          });
+        });
+      }
+
+      result
+    })
   }
 }
 
