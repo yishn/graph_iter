@@ -1,7 +1,6 @@
 use crate::*;
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::marker::PhantomData;
 use graph::Graph;
 use edge::Edge;
 
@@ -143,67 +142,32 @@ impl<V, E> FiniteGraph<V, E> {
   }
 }
 
-pub struct NeighborsIter<'a, I: Iterator<Item = &'a (Id, Id)>> {
-  iter: Option<I>
-}
+impl<V, E> Graph<Id> for FiniteGraph<V, E> {
+  type NeighborsIterator = Vec<Id>;
 
-impl<'a, I: Iterator<Item = &'a (Id, Id)>> Iterator for NeighborsIter<'a, I> {
-  type Item = Id;
-
-  fn next(&mut self) -> Option<Id> {
-    self.iter.as_mut().and_then(|iter| {
-      iter.next()
-      .map(|(neighbor, _)| *neighbor)
+  fn neighbors(&self, vertex: &Id) -> Vec<Id> {
+    self.neighbors_map.get(&vertex)
+    .map(|neighbors| {
+      neighbors.iter()
+      .map(|(v, _)| *v)
+      .collect()
     })
+    .unwrap_or_else(|| vec![])
   }
 }
 
-impl<'a, V, E> Graph<Id> for &'a FiniteGraph<V, E> {
-  type NeighborsIterator = NeighborsIter<'a, std::slice::Iter<'a, (Id, Id)>>;
+impl<V, E: Edge> EdgedGraph<Id, E> for FiniteGraph<V, E> {
+  type EdgesIterator = Vec<E>;
 
-  fn neighbors(&self, vertex: &Id) -> Self::NeighborsIterator {
-    NeighborsIter {
-      iter: self.neighbors_map.get(&vertex).map(|x| x.iter())
-    }
-  }
-}
-
-pub struct EdgesIter<'a, V, E, I: Iterator<Item = &'a (Id, Id)>> {
-  graph: &'a FiniteGraph<V, E>,
-  iter: Option<I>,
-  vertex: Id,
-  phantom: PhantomData<&'a (V, E)>
-}
-
-impl<'a, V, E: Edge, I: Iterator<Item = &'a (Id, Id)>> Iterator for EdgesIter<'a, V, E, I> {
-  type Item = E;
-
-  fn next(&mut self) -> Option<E> {
-    let graph = self.graph;
-    let vertex = self.vertex;
-
-    self.iter.as_mut().and_then(|iter| loop {
-      match iter.next() {
-        Some((neighbor, edge)) if neighbor == &vertex => {
-          break graph.get_edge(*edge).cloned();
-        },
-        None => break None,
-        _ => {}
-      }
+  fn edges(&self, vertex: &Id, other: &Id) -> Vec<E> {
+    self.neighbors_map.get(&vertex)
+    .map(|neighbors| {
+      neighbors.iter()
+      .filter(|&(v, _)| v == other)
+      .filter_map(|&(_, e)| self.get_edge(e).cloned())
+      .collect()
     })
-  }
-}
-
-impl<'a, V, E: Edge> EdgedGraph<Id, E> for &'a FiniteGraph<V, E> {
-  type EdgesIterator = EdgesIter<'a, V, E, std::slice::Iter<'a, (Id, Id)>>;
-
-  fn edges(&self, vertex: &Id, other: &Id) -> Self::EdgesIterator {
-    EdgesIter {
-      graph: self,
-      iter: self.neighbors_map.get(vertex).map(|x| x.iter()),
-      vertex: *other,
-      phantom: PhantomData
-    }
+    .unwrap_or_else(|| vec![])
   }
 }
 
@@ -228,12 +192,10 @@ mod tests {
     graph.insert_edge(b, c, ());
     graph.insert_edge(d, c, ());
 
-    let graph_ref = &graph;
-
     assert_eq!(graph.vertices().count(), 4);
-    assert_eq!(graph_ref.neighbors(&a).count(), 3);
-    assert_eq!(graph_ref.neighbors(&b).count(), 1);
-    assert_eq!(graph_ref.neighbors(&c).count(), 0);
-    assert_eq!(graph_ref.neighbors(&d).count(), 1);
+    assert_eq!(graph.neighbors(&a).len(), 3);
+    assert_eq!(graph.neighbors(&b).len(), 1);
+    assert_eq!(graph.neighbors(&c).len(), 0);
+    assert_eq!(graph.neighbors(&d).len(), 1);
   }
 }

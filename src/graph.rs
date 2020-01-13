@@ -13,14 +13,14 @@ use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
 ///
 /// Creating a graph involves two steps: Creating a `struct` to hold the graph data
 /// and then implementing `Graph<V>` for that `struct`, i.e. implementing the required
-/// trait function `neighbors` that will return a [`Vec`] of adjacent vertices of the
+/// trait function `neighbors` that will return an [`IntoIterator`] of adjacent vertices of the
 /// given vertex as function argument.
 ///
 /// [`Hash`]: https://doc.rust-lang.org/core/hash/trait.Hash.html
 /// [`Eq`]: https://doc.rust-lang.org/core/cmp/trait.Eq.html
 /// [`Clone`]: https://doc.rust-lang.org/core/clone/trait.Clone.html
 /// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
-/// [`Vec`]: https://doc.rust-lang.org/alloc/vec/struct.Vec.html
+/// [`IntoIterator`]: https://doc.rust-lang.org/std/iter/trait.IntoIterator.html
 ///
 /// # Example
 ///
@@ -106,11 +106,8 @@ pub trait Graph<V: Vertex> {
 /// impl Graph<Position> for FullyConnectedGraph {
 ///   type NeighborsIterator = Vec<Position>;
 ///
-///   fn neighbors(&self, vertex: &Position) -> Vec<Position> {
-///     self.vertices.iter()
-///     .filter(|&v| v != vertex)
-///     .cloned()
-///     .collect()
+///   fn neighbors(&self, _vertex: &Position) -> Vec<Position> {
+///     self.vertices.clone()
 ///   }
 /// }
 ///
@@ -189,11 +186,8 @@ mod tests {
   impl Graph<Position> for FullyConnectedGraph {
     type NeighborsIterator = Vec<Position>;
 
-    fn neighbors(&self, vertex: &Position) -> Vec<Position> {
-      self.vertices.iter()
-      .filter(|&v| v != vertex)
-      .cloned()
-      .collect()
+    fn neighbors(&self, _vertex: &Position) -> Vec<Position> {
+      self.vertices.clone()
     }
   }
 
