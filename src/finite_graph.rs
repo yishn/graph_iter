@@ -24,6 +24,7 @@ pub struct FiniteGraph<V, E> {
 }
 
 impl<V, E> FiniteGraph<V, E> {
+  /// Constructs a new, empty `FiniteGraph<V, E>`.
   pub fn new() -> FiniteGraph<V, E> {
     FiniteGraph {
       id: Id(0),
@@ -34,6 +35,7 @@ impl<V, E> FiniteGraph<V, E> {
     }
   }
 
+  /// Constructs a new, empty `FiniteGraph<V, E>` with the specified vertex/edge capacities.
   pub fn with_capacity(vertex_capacity: usize, edge_capacity: usize) -> FiniteGraph<V, E> {
     FiniteGraph {
       id: Id(0),
@@ -44,57 +46,70 @@ impl<V, E> FiniteGraph<V, E> {
     }
   }
 
+  /// Returns the number of vertices and the number of edges.
   pub fn len(&self) -> (usize, usize) {
     (self.vertices_map.len(), self.edges_map.len())
   }
 
+  /// Returns the number of vertices and the number of edges the collection can
+  /// hold without reallocating.
   pub fn capacity(&self) -> (usize, usize) {
     (self.vertices_map.capacity(), self.edges_map.capacity())
   }
 
+  /// An iterator visiting all vertices in arbitrary order.
   pub fn all_vertices(&self) -> impl Iterator<Item = &V> {
     self.vertices_map.values()
   }
 
+  /// An iterator visiting all vertices mutably in arbitrary order.
   pub fn all_vertices_mut(&mut self) -> impl Iterator<Item = &mut V> {
     self.vertices_map.values_mut()
   }
 
+  /// An iterator visiting all edges in arbitrary order.
   pub fn all_edges(&self) -> impl Iterator<Item = &E> {
     self.edges_map.values().map(|(e, _, _)| e)
   }
 
+  /// An iterator visiting all edges mutably in arbitrary order.
   pub fn all_edges_mut(&mut self) -> impl Iterator<Item = &mut E> {
     self.edges_map.values_mut().map(|(e, _, _)| e)
   }
 
+  /// Returns a reference to the value corresponding to the vertex.
   pub fn get_vertex(&self, vertex: Id) -> Option<&V> {
     self.vertices_map.get(&vertex)
   }
 
+  /// Returns a mutable reference to the value corresponding to the vertex.
   pub fn get_vertex_mut(&mut self, vertex: Id) -> Option<&mut V> {
     self.vertices_map.get_mut(&vertex)
   }
 
+  /// Returns a reference to the value corresponding to the edge.
   pub fn get_edge(&self, edge: Id) -> Option<&E> {
     self.edges_map.get(&edge).map(|(e, _, _)| e)
   }
 
+  /// Returns a mutable reference to the value corresponding to the edge.
   pub fn get_edge_mut(&mut self, edge: Id) -> Option<&mut E> {
     self.edges_map.get_mut(&edge).map(|(e, _, _)| e)
   }
 
+  /// Returns `true` if the graph contains a value for the specified vertex.
   pub fn contains_vertex(&self, vertex: Id) -> bool {
     self.vertices_map.contains_key(&vertex)
   }
 
+  /// Returns `true` if the graph contains a value for the specified edge.
   pub fn contains_edge(&self, edge: Id) -> bool {
     self.edges_map.contains_key(&edge)
   }
 
-  pub fn insert_vertex(&mut self, data: V) -> Id {
+  pub fn insert_vertex(&mut self, value: V) -> Id {
     let id = self.id.next();
-    self.vertices_map.insert(id, data);
+    self.vertices_map.insert(id, value);
 
     id
   }
@@ -134,13 +149,13 @@ impl<V, E> FiniteGraph<V, E> {
     Some(edge)
   }
 
-  pub fn insert_edge(&mut self, from: Id, to: Id, data: E) -> Option<Id> {
+  pub fn insert_edge(&mut self, from: Id, to: Id, value: E) -> Option<Id> {
     if !self.vertices_map.contains_key(&from) || !self.vertices_map.contains_key(&to) {
       return None;
     }
 
     let id = self.id.next();
-    self.edges_map.insert(id, (data, from, to));
+    self.edges_map.insert(id, (value, from, to));
 
     self.insert_edge_id(from, to, id)
   }

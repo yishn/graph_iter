@@ -26,7 +26,8 @@ use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
 /// # Example
 ///
 /// ```
-/// use graph_iter::{Graph, VertexTraverser};
+/// use graph_iter::Graph;
+/// use graph_iter::vertex_traverser::VertexTraverser;
 ///
 /// type Position = (i32, i32);
 ///
@@ -108,7 +109,8 @@ pub trait ReversableGraph<V: Vertex>: Graph<V> {
 /// # Example
 ///
 /// ```
-/// use graph_iter::{Graph, EdgedGraph, VertexTraverser};
+/// use graph_iter::{Graph, EdgedGraph};
+/// use graph_iter::vertex_traverser::VertexTraverser;
 ///
 /// type Position = (i32, i32);
 ///
