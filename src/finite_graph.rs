@@ -52,19 +52,19 @@ impl<V, E> FiniteGraph<V, E> {
     (self.vertices_map.capacity(), self.edges_map.capacity())
   }
 
-  pub fn vertices(&self) -> impl Iterator<Item = &V> {
+  pub fn all_vertices(&self) -> impl Iterator<Item = &V> {
     self.vertices_map.values()
   }
 
-  pub fn vertices_mut(&mut self) -> impl Iterator<Item = &mut V> {
+  pub fn all_vertices_mut(&mut self) -> impl Iterator<Item = &mut V> {
     self.vertices_map.values_mut()
   }
 
-  pub fn edges(&self) -> impl Iterator<Item = &E> {
+  pub fn all_edges(&self) -> impl Iterator<Item = &E> {
     self.edges_map.values().map(|(e, _, _)| e)
   }
 
-  pub fn edges_mut(&mut self) -> impl Iterator<Item = &mut E> {
+  pub fn all_edges_mut(&mut self) -> impl Iterator<Item = &mut E> {
     self.edges_map.values_mut().map(|(e, _, _)| e)
   }
 
@@ -222,8 +222,8 @@ mod tests {
     let e4 = graph.insert_edge(b, c, 4).unwrap();
     let e5 = graph.insert_edge(d, c, 5).unwrap();
 
-    assert_eq!(graph.vertices().count(), 4);
-    assert_eq!(graph.edges().count(), 5);
+    assert_eq!(graph.all_vertices().count(), 4);
+    assert_eq!(graph.all_edges().count(), 5);
 
     assert_eq!(graph.get_vertex(a).unwrap(), &(0, 0));
     assert_eq!(graph.get_vertex(b).unwrap(), &(0, 1));
@@ -245,8 +245,8 @@ mod tests {
 
     assert_eq!(edge_data, Some(3));
     assert_eq!(graph.get_edge(e3), None);
-    assert_eq!(graph.vertices().count(), 4);
-    assert_eq!(graph.edges().count(), 4);
+    assert_eq!(graph.all_vertices().count(), 4);
+    assert_eq!(graph.all_edges().count(), 4);
     assert_eq!(graph.neighbors(&a), vec![b, c]);
     assert_eq!(graph.neighbors(&d), vec![c]);
 
@@ -254,8 +254,36 @@ mod tests {
 
     assert_eq!(vertex_data, Some((0, 1)));
     assert_eq!(graph.get_vertex(b), None);
-    assert_eq!(graph.vertices().count(), 3);
-    assert_eq!(graph.edges().count(), 2);
+    assert_eq!(graph.all_vertices().count(), 3);
+    assert_eq!(graph.all_edges().count(), 2);
     assert_eq!(graph.neighbors(&a), vec![c]);
+  }
+
+  #[test]
+  fn insert_and_remove_bi_edges() {
+    let mut graph = FiniteGraph::<Position, usize>::new();
+
+    let a = graph.insert_vertex((0, 0));
+    let b = graph.insert_vertex((0, 1));
+    let c = graph.insert_vertex((1, 1));
+    let d = graph.insert_vertex((1, 0));
+
+    let e1 = graph.insert_bi_edge(a, b, 1).unwrap();
+    graph.insert_bi_edge(b, c, 2).unwrap();
+    graph.insert_bi_edge(c, d, 3).unwrap();
+    graph.insert_bi_edge(d, a, 4).unwrap();
+
+    assert_eq!(graph.all_edges().count(), 4);
+    assert_eq!(graph.edges(&a, &b), vec![1]);
+    assert_eq!(graph.edges(&b, &a), vec![1]);
+    assert_eq!(graph.edges(&a, &d), vec![4]);
+    assert_eq!(graph.edges(&d, &a), vec![4]);
+    assert_eq!(graph.edges(&b, &d), vec![]);
+    assert_eq!(graph.edges(&d, &b), vec![]);
+
+    graph.remove_edge(e1);
+
+    assert_eq!(graph.edges(&a, &b), vec![]);
+    assert_eq!(graph.edges(&b, &a), vec![]);
   }
 }
