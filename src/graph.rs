@@ -1,37 +1,9 @@
 use crate::*;
 use vertex::Vertex;
 use edge::{Edge, WeightedEdge};
+use graph_adapters::Reversed;
 use vertex_container::{DfsContainer, BfsContainer};
 use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
-
-pub struct Reversed<'a, T> {
-  graph: &'a T
-}
-
-impl<'a, V: Vertex, T: ReversableGraph<V>> Graph<V> for Reversed<'a, T> {
-  type NeighborsIterator = T::ReverseNeighborsIterator;
-
-  fn neighbors(&self, vertex: &V) -> Self::NeighborsIterator {
-    self.graph.reverse_neighbors(vertex)
-  }
-}
-
-impl<'a, V: Vertex, T: ReversableGraph<V>> ReversableGraph<V> for Reversed<'a, T> {
-  type ReverseNeighborsIterator = T::NeighborsIterator;
-
-  fn reverse_neighbors(&self, vertex: &V) -> Self::ReverseNeighborsIterator {
-    self.graph.neighbors(vertex)
-  }
-}
-
-impl<'a, V: Vertex, E: Edge, T> EdgedGraph<V, E> for Reversed<'a, T>
-where T: ReversableGraph<V> + EdgedGraph<V, E> {
-  type EdgesIterator = T::EdgesIterator;
-
-  fn edges(&self, vertex: &V, other: &V) -> Self::EdgesIterator {
-    self.graph.edges(other, vertex)
-  }
-}
 
 /// Represents a directed, potentially infinite, graph.
 ///
@@ -105,12 +77,10 @@ pub trait Graph<V: Vertex> {
     DefaultVertexTrav::new(self, start.clone())
   }
 
-  /// Reverses all edges.
+  /// Returns a graph by reversing all edges.
   fn rev(&self) -> Reversed<'_, Self>
   where Self: Sized + ReversableGraph<V> {
-    Reversed {
-      graph: self
-    }
+    Reversed::new(self)
   }
 }
 
@@ -206,6 +176,7 @@ pub trait EdgedGraph<V: Vertex, E: Edge>: Graph<V> {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use vertex_traverser::VertexTraverser;
 
   type Position = (i32, i32);
 
