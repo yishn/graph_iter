@@ -186,6 +186,20 @@ impl<V, E> Graph<Id> for FiniteGraph<V, E> {
   }
 }
 
+impl<V, E> ReversableGraph<Id> for FiniteGraph<V, E> {
+  type ReverseNeighborsIterator = Vec<Id>;
+
+  fn reverse_neighbors(&self, vertex: &Id) -> Vec<Id> {
+    self.reverse_neighbors_map.get(&vertex)
+    .map(|neighbors| {
+      neighbors.iter()
+      .map(|(v, _)| *v)
+      .collect()
+    })
+    .unwrap_or_else(|| vec![])
+  }
+}
+
 impl<V, E: Edge> EdgedGraph<Id, E> for FiniteGraph<V, E> {
   type EdgesIterator = Vec<E>;
 

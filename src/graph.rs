@@ -4,6 +4,35 @@ use edge::{Edge, WeightedEdge};
 use vertex_container::{DfsContainer, BfsContainer};
 use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
 
+pub struct Reversed<'a, T> {
+  graph: &'a T
+}
+
+impl<'a, V: Vertex, T: ReversableGraph<V>> Graph<V> for Reversed<'a, T> {
+  type NeighborsIterator = T::ReverseNeighborsIterator;
+
+  fn neighbors(&self, vertex: &V) -> Self::NeighborsIterator {
+    self.graph.reverse_neighbors(vertex)
+  }
+}
+
+impl<'a, V: Vertex, T: ReversableGraph<V>> ReversableGraph<V> for Reversed<'a, T> {
+  type ReverseNeighborsIterator = T::NeighborsIterator;
+
+  fn reverse_neighbors(&self, vertex: &V) -> Self::ReverseNeighborsIterator {
+    self.graph.neighbors(vertex)
+  }
+}
+
+impl<'a, V: Vertex, E: Edge, T> EdgedGraph<V, E> for Reversed<'a, T>
+where T: ReversableGraph<V> + EdgedGraph<V, E> {
+  type EdgesIterator = T::EdgesIterator;
+
+  fn edges(&self, vertex: &V, other: &V) -> Self::EdgesIterator {
+    self.graph.edges(other, vertex)
+  }
+}
+
 /// Represents a directed, potentially infinite, graph.
 ///
 /// `Graph<V>` is a trait and is parameterized over `V`, the type of your vertices.
@@ -75,6 +104,22 @@ pub trait Graph<V: Vertex> {
   where Self: Sized {
     DefaultVertexTrav::new(self, start.clone())
   }
+
+  /// Reverses all edges.
+  fn rev(&self) -> Reversed<'_, Self>
+  where Self: Sized + ReversableGraph<V> {
+    Reversed {
+      graph: self
+    }
+  }
+}
+
+/// A graph that is able to travel vertices along edges backwards.
+pub trait ReversableGraph<V: Vertex>: Graph<V> {
+  type ReverseNeighborsIterator: IntoIterator<Item = V>;
+
+  /// Generates a list of adjacent vertices that can be reached from `vertex` by traveling along an edge backwards.
+  fn reverse_neighbors(&self, vertex: &V) -> Self::ReverseNeighborsIterator;
 }
 
 /// Represents a directed, potentially infinite, multigraph, where edges contain certain data.
