@@ -19,7 +19,8 @@ pub struct FiniteGraph<V, E> {
   id: Id,
   vertices_map: HashMap<Id, V>,
   edges_map: HashMap<Id, (E, Id, Id)>,
-  neighbors_map: HashMap<Id, Vec<(Id, Id)>>
+  neighbors_map: HashMap<Id, Vec<(Id, Id)>>,
+  reverse_neighbors_map: HashMap<Id, Vec<(Id, Id)>>
 }
 
 impl<V, E> FiniteGraph<V, E> {
@@ -28,7 +29,8 @@ impl<V, E> FiniteGraph<V, E> {
       id: Id(0),
       vertices_map: HashMap::new(),
       edges_map: HashMap::new(),
-      neighbors_map: HashMap::new()
+      neighbors_map: HashMap::new(),
+      reverse_neighbors_map: HashMap::new()
     }
   }
 
@@ -37,7 +39,8 @@ impl<V, E> FiniteGraph<V, E> {
       id: Id(0),
       vertices_map: HashMap::with_capacity(vertex_capacity),
       edges_map: HashMap::with_capacity(edge_capacity),
-      neighbors_map: HashMap::with_capacity(vertex_capacity)
+      neighbors_map: HashMap::with_capacity(vertex_capacity),
+      reverse_neighbors_map: HashMap::with_capacity(vertex_capacity)
     }
   }
 
@@ -98,12 +101,15 @@ impl<V, E> FiniteGraph<V, E> {
 
   pub fn remove_vertex(&mut self, vertex: Id) -> Option<V> {
     let result = self.vertices_map.remove(&vertex);
-    self.neighbors_map.remove(&vertex);
+    let neighbors = self.neighbors_map.remove(&vertex).unwrap_or_else(|| vec![]);
+    let reverse_neighbors = self.reverse_neighbors_map.remove(&vertex).unwrap_or_else(|| vec![]);
 
-    let to_delete = self.edges_map.iter()
-      .filter(|(_, (_, v, w))| v == &vertex || w == &vertex)
-      .map(|(edge, _)| *edge)
-      .collect::<Vec<_>>();
+    let to_delete = neighbors.into_iter()
+      .map(|(_, e)| e)
+      .chain(
+        reverse_neighbors.into_iter()
+        .map(|(_, e)| e)
+      );
 
     for edge in to_delete {
       self.remove_edge(edge);
@@ -117,6 +123,12 @@ impl<V, E> FiniteGraph<V, E> {
       neighbors.push((to, edge));
     } else {
       self.neighbors_map.insert(from, vec![(to, edge)]);
+    }
+
+    if let Some(reverse_neighbors) = self.reverse_neighbors_map.get_mut(&to) {
+      reverse_neighbors.push((from, edge));
+    } else {
+      self.reverse_neighbors_map.insert(to, vec![(from, edge)]);
     }
 
     Some(edge)
@@ -146,11 +158,13 @@ impl<V, E> FiniteGraph<V, E> {
   pub fn remove_edge(&mut self, edge: Id) -> Option<E> {
     self.edges_map.remove(&edge).map(|(data, vertex, other)| {
       for vertex in &[vertex, other] {
-        self.neighbors_map.get_mut(&vertex).map(|neighbors| {
-          neighbors.iter().position(|(_, e)| e == &edge).map(|index| {
-            neighbors.remove(index);
+        for map in &mut [&mut self.neighbors_map, &mut self.reverse_neighbors_map] {
+          map.get_mut(&vertex).map(|neighbors| {
+            neighbors.iter().position(|(_, e)| e == &edge).map(|index| {
+              neighbors.remove(index);
+            });
           });
-        });
+        }
       }
 
       data
