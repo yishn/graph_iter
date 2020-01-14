@@ -1,5 +1,23 @@
 use crate::*;
+use std::marker::PhantomData;
 use graph::*;
+use vertex_traverser::VertexTraverser;
+
+pub struct Iter<'a, V: Vertex, T: VertexTraverser<V>>(&'a mut T, PhantomData<V>);
+
+impl<'a, V: Vertex, T: VertexTraverser<V>> Iter<'a, V, T> {
+  pub(crate) fn new(traverser: &'a mut T) -> Iter<'a, V, T> {
+    Iter(traverser, PhantomData)
+  }
+}
+
+impl<'a, V: Vertex, T: VertexTraverser<V>> Iterator for Iter<'a, V, T> {
+  type Item = V;
+
+  fn next(&mut self) -> Option<V> {
+    self.0.next()
+  }
+}
 
 #[derive(Clone)]
 pub struct Reversed<'a, T> {
@@ -7,7 +25,7 @@ pub struct Reversed<'a, T> {
 }
 
 impl<'a, T> Reversed<'a, T> {
-  pub fn new(graph: &'a T) -> Reversed<'a, T> {
+  pub(crate) fn new(graph: &'a T) -> Reversed<'a, T> {
     Reversed {
       graph
     }

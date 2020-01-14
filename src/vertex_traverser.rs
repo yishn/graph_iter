@@ -1,24 +1,14 @@
 use crate::*;
 use std::collections::HashMap;
 use std::iter;
-use std::marker::PhantomData;
 use graph::EdgedGraph;
 use vertex::Vertex;
 use edge::WeightedEdge;
 use vertex_container::{VertexContainer, DijkstraContainer};
-
-pub struct Iter<'a, V: Vertex, T: VertexTraverser<V>>(&'a mut T, PhantomData<V>);
-
-impl<'a, V: Vertex, T: VertexTraverser<V>> Iterator for Iter<'a, V, T> {
-  type Item = V;
-
-  fn next(&mut self) -> Option<V> {
-    self.0.next()
-  }
-}
+use graph_adapters::Iter;
 
 /// An interface for dealing with vertex traversers over a graph.
-pub trait VertexTraverser<V: Vertex> {
+pub trait VertexTraverser<V: Vertex> where Self: Sized {
   /// Returns start vertex.
   fn first(&self) -> V;
 
@@ -31,8 +21,8 @@ pub trait VertexTraverser<V: Vertex> {
 
   /// Returns an [`Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html)
   /// that let's you iterate over the traverser.
-  fn iter(&mut self) -> Iter<'_, V, Self> where Self: Sized {
-    Iter(self, PhantomData)
+  fn iter(&mut self) -> Iter<'_, V, Self> {
+    Iter::new(self)
   }
 
   /// Returns a path from start vertex to `target` or `None` if
@@ -60,12 +50,13 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
   graph: &'a G,
   start: V,
   queue: C,
-  predecessor_map: HashMap<V, Option<V>>
+  predecessor_map: HashMap<V, Option<V>>,
+  cycle_detected: bool
 }
 
 impl<'a, G, V, C> DefaultVertexTrav<'a, G, V, C>
 where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
-  pub(crate) fn new(graph: &G, start: V) -> DefaultVertexTrav<'_, G, V, C> where C: Sized {
+  pub(crate) fn new(graph: &G, start: V) -> DefaultVertexTrav<'_, G, V, C> {
     let mut container = C::new();
     container.push(start.clone());
 
@@ -73,8 +64,21 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
       graph,
       start: start.clone(),
       queue: container,
-      predecessor_map: iter::once((start, None)).collect()
+      predecessor_map: iter::once((start, None)).collect(),
+      cycle_detected: false
     }
+  }
+
+  /// Returns `true` if we can reach a cycle by traversing the graph starting
+  /// with the start vertex.
+  pub fn is_cyclic(mut self) -> bool {
+    while !self.cycle_detected {
+      if let None = self.next() {
+        break;
+      }
+    }
+
+    self.cycle_detected
   }
 }
 
@@ -99,6 +103,7 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
     vertex.map(|vertex| {
       for neighbor in self.graph.neighbors(&vertex) {
         if self.predecessor_map.contains_key(&neighbor) {
+          self.cycle_detected = true;
           continue;
         }
 
