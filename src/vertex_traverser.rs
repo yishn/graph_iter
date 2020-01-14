@@ -5,38 +5,43 @@ use graph::EdgedGraph;
 use vertex::Vertex;
 use edge::WeightedEdge;
 use vertex_container::{VertexContainer, DijkstraContainer};
-use graph_adapters::Iter;
+use graph_adapters::{Iter, PredecessorIter};
 
 /// An interface for dealing with vertex traversers over a graph.
 pub trait VertexTraverser<V: Vertex> where Self: Sized {
   /// Returns start vertex.
   fn first(&self) -> V;
 
-  /// Returns the predecessor vertex of the given vertex
-  /// or `None` if `vertex` is the start vertex or is not reachable.
-  fn predecessor(&mut self, vertex: &V) -> Option<V>;
-
   /// Advances the traverser and returns the next value.
   fn next(&mut self) -> Option<V>;
 
+  /// Returns the predecessor vertex of the given vertex
+  /// or `None` if `vertex` is the start vertex or has not been reached yet.
+  fn predecessor(&self, vertex: &V) -> Option<V>;
+
   /// Returns an [`Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html)
-  /// that let's you iterate over the traverser.
+  /// that lets you iterate over the traverser.
   fn iter(&mut self) -> Iter<'_, V, Self> {
     Iter::new(self)
   }
 
-  /// Returns a path from start vertex to `target` or `None` if
-  /// there's no such path.
-  fn construct_path(&mut self, target: &V) -> Option<Vec<V>> {
-    let mut path = vec![target.clone()];
+  /// Returns an [`Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html)
+  /// that lets you iterate over predecessors beginning at a given `vertex`.
+  fn predecessor_iter(&self, vertex: &V) -> PredecessorIter<'_, V, Self> {
+    PredecessorIter::new(self, vertex.clone())
+  }
 
-    while let Some(previous) = self.predecessor(path.last().unwrap()) {
-      path.push(previous);
+  /// Traverses through the graph until we reach `target` and returns a path from start vertex
+  /// to `target`, or `None` if the `target` vertex cannot be reached.
+  fn construct_path(&mut self, target: &V) -> Option<Vec<V>> {
+    if self.predecessor(target).is_none() {
+      self.iter().find(|v| v == target);
     }
 
+    let mut path = self.predecessor_iter(target).collect::<Vec<_>>();
     path.reverse();
 
-    if path[0] == self.first() {
+    if path.len() > 1 || target == &self.first() {
       Some(path)
     } else {
       None
@@ -88,11 +93,7 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
     self.start.clone()
   }
 
-  fn predecessor(&mut self, vertex: &V) -> Option<V> {
-    if !self.predecessor_map.contains_key(vertex) {
-      self.iter().find(|v| v == vertex);
-    }
-
+  fn predecessor(&self, vertex: &V) -> Option<V> {
     self.predecessor_map.get(vertex)
     .and_then(|predecessor| predecessor.clone())
   }
@@ -166,11 +167,7 @@ where
     self.start.clone()
   }
 
-  fn predecessor(&mut self, vertex: &V) -> Option<V> {
-    if !self.predecessor_map.contains_key(vertex) {
-      self.iter().find(|v| v == vertex);
-    }
-
+  fn predecessor(&self, vertex: &V) -> Option<V> {
     self.predecessor_map.get(vertex)
     .and_then(|predecessor| predecessor.clone())
   }

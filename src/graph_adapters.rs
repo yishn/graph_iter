@@ -19,6 +19,27 @@ impl<'a, V: Vertex, T: VertexTraverser<V>> Iterator for Iter<'a, V, T> {
   }
 }
 
+pub struct PredecessorIter<'a, V: Vertex, T: VertexTraverser<V>>(&'a T, Option<V>);
+
+impl<'a, V: Vertex, T: VertexTraverser<V>> PredecessorIter<'a, V, T> {
+  pub(crate) fn new(traverser: &'a T, vertex: V) -> PredecessorIter<'a, V, T> {
+    PredecessorIter(traverser, Some(vertex))
+  }
+}
+
+impl<'a, V: Vertex, T: VertexTraverser<V>> Iterator for PredecessorIter<'a, V, T> {
+  type Item = V;
+
+  fn next(&mut self) -> Option<V> {
+    self.1.clone().map(|vertex| {
+      let predecessor = self.0.predecessor(&vertex);
+      self.1 = predecessor;
+
+      vertex
+    })
+  }
+}
+
 #[derive(Clone)]
 pub struct Reversed<'a, T> {
   graph: &'a T
