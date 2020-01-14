@@ -1,8 +1,7 @@
 use crate::*;
 use std::collections::HashMap;
 use std::hash::Hash;
-use graph::Graph;
-use edge::Edge;
+use graph_adapters::GraphIter;
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Id(usize);
@@ -17,10 +16,10 @@ impl Id {
 #[derive(Clone)]
 pub struct FiniteGraph<V, E> {
   id: Id,
-  vertices_map: HashMap<Id, V>,
-  edges_map: HashMap<Id, (E, Id, Id)>,
-  neighbors_map: HashMap<Id, Vec<(Id, Id)>>,
-  reverse_neighbors_map: HashMap<Id, Vec<(Id, Id)>>
+  pub(crate) vertices_map: HashMap<Id, V>,
+  pub(crate) edges_map: HashMap<Id, (E, Id, Id)>,
+  pub(crate) neighbors_map: HashMap<Id, Vec<(Id, Id)>>,
+  pub(crate) reverse_neighbors_map: HashMap<Id, Vec<(Id, Id)>>
 }
 
 impl<V, E> FiniteGraph<V, E> {
@@ -75,6 +74,21 @@ impl<V, E> FiniteGraph<V, E> {
   /// An iterator visiting all edges mutably in arbitrary order.
   pub fn all_edges_mut(&mut self) -> impl Iterator<Item = &mut E> {
     self.edges_map.values_mut().map(|(e, _, _)| e)
+  }
+
+  pub fn neighbors<'a>(&'a self, vertex: Id) -> impl Iterator<Item = Id> + 'a {
+    self.graph_iter().neighbors(&vertex)
+  }
+
+  pub fn edges<'a>(&'a self, from: Id, to: Id) -> impl Iterator<Item = Id> + 'a {
+    self.neighbors_map.get(&from)
+    .map(move |neighbors| {
+      neighbors.iter()
+      .filter(move |(v, _)| *v == to)
+      .map(|(_, e)| *e)
+    })
+    .into_iter()
+    .flatten()
   }
 
   /// Returns a reference to the value corresponding to the vertex.
@@ -185,48 +199,9 @@ impl<V, E> FiniteGraph<V, E> {
       data
     })
   }
-}
 
-impl<V, E> Graph<Id> for FiniteGraph<V, E> {
-  type NeighborsIterator = Vec<Id>;
-
-  fn neighbors(&self, vertex: &Id) -> Vec<Id> {
-    self.neighbors_map.get(&vertex)
-    .map(|neighbors| {
-      neighbors.iter()
-      .map(|(v, _)| *v)
-      .collect()
-    })
-    .unwrap_or_else(|| vec![])
-  }
-}
-
-impl<V, E> ReversableGraph<Id> for FiniteGraph<V, E> {
-  type ReverseNeighborsIterator = Vec<Id>;
-
-  fn reverse_neighbors(&self, vertex: &Id) -> Vec<Id> {
-    self.reverse_neighbors_map.get(&vertex)
-    .map(|neighbors| {
-      neighbors.iter()
-      .map(|(v, _)| *v)
-      .collect()
-    })
-    .unwrap_or_else(|| vec![])
-  }
-}
-
-impl<V, E: Edge> EdgedGraph<Id, E> for FiniteGraph<V, E> {
-  type EdgesIterator = Vec<E>;
-
-  fn edges(&self, vertex: &Id, other: &Id) -> Vec<E> {
-    self.neighbors_map.get(&vertex)
-    .map(|neighbors| {
-      neighbors.iter()
-      .filter(|&(v, _)| v == other)
-      .filter_map(|&(_, e)| self.get_edge(e).cloned())
-      .collect()
-    })
-    .unwrap_or_else(|| vec![])
+  pub fn graph_iter(&self) -> GraphIter<'_, V, E> {
+    GraphIter::new(self)
   }
 }
 
@@ -265,10 +240,10 @@ mod tests {
     assert_eq!(graph.get_edge(e4), Some(&4));
     assert_eq!(graph.get_edge(e5), Some(&5));
 
-    assert_eq!(graph.neighbors(&a), vec![b, c, d]);
-    assert_eq!(graph.neighbors(&b), vec![c]);
-    assert_eq!(graph.neighbors(&c), vec![]);
-    assert_eq!(graph.neighbors(&d), vec![c]);
+    assert_eq!(graph.neighbors(a).collect::<Vec<_>>(), vec![b, c, d]);
+    assert_eq!(graph.neighbors(b).collect::<Vec<_>>(), vec![c]);
+    assert_eq!(graph.neighbors(c).collect::<Vec<_>>(), vec![]);
+    assert_eq!(graph.neighbors(d).collect::<Vec<_>>(), vec![c]);
 
     let edge_data = graph.remove_edge(e3);
 
@@ -276,8 +251,8 @@ mod tests {
     assert_eq!(graph.get_edge(e3), None);
     assert_eq!(graph.all_vertices().count(), 4);
     assert_eq!(graph.all_edges().count(), 4);
-    assert_eq!(graph.neighbors(&a), vec![b, c]);
-    assert_eq!(graph.neighbors(&d), vec![c]);
+    assert_eq!(graph.neighbors(a).collect::<Vec<_>>(), vec![b, c]);
+    assert_eq!(graph.neighbors(d).collect::<Vec<_>>(), vec![c]);
 
     let vertex_data = graph.remove_vertex(b);
 
@@ -285,7 +260,7 @@ mod tests {
     assert_eq!(graph.get_vertex(b), None);
     assert_eq!(graph.all_vertices().count(), 3);
     assert_eq!(graph.all_edges().count(), 2);
-    assert_eq!(graph.neighbors(&a), vec![c]);
+    assert_eq!(graph.neighbors(a).collect::<Vec<_>>(), vec![c]);
   }
 
   #[test]
@@ -300,19 +275,19 @@ mod tests {
     let e1 = graph.insert_bi_edge(a, b, 1).unwrap();
     graph.insert_bi_edge(b, c, 2).unwrap();
     graph.insert_bi_edge(c, d, 3).unwrap();
-    graph.insert_bi_edge(d, a, 4).unwrap();
+    let e4 = graph.insert_bi_edge(d, a, 4).unwrap();
 
     assert_eq!(graph.all_edges().count(), 4);
-    assert_eq!(graph.edges(&a, &b), vec![1]);
-    assert_eq!(graph.edges(&b, &a), vec![1]);
-    assert_eq!(graph.edges(&a, &d), vec![4]);
-    assert_eq!(graph.edges(&d, &a), vec![4]);
-    assert_eq!(graph.edges(&b, &d), vec![]);
-    assert_eq!(graph.edges(&d, &b), vec![]);
+    assert_eq!(graph.edges(a, b).collect::<Vec<_>>(), vec![e1]);
+    assert_eq!(graph.edges(b, a).collect::<Vec<_>>(), vec![e1]);
+    assert_eq!(graph.edges(a, d).collect::<Vec<_>>(), vec![e4]);
+    assert_eq!(graph.edges(d, a).collect::<Vec<_>>(), vec![e4]);
+    assert_eq!(graph.edges(b, d).collect::<Vec<_>>(), vec![]);
+    assert_eq!(graph.edges(d, b).collect::<Vec<_>>(), vec![]);
 
     graph.remove_edge(e1);
 
-    assert_eq!(graph.edges(&a, &b), vec![]);
-    assert_eq!(graph.edges(&b, &a), vec![]);
+    assert_eq!(graph.edges(a, b).collect::<Vec<_>>(), vec![]);
+    assert_eq!(graph.edges(b, a).collect::<Vec<_>>(), vec![]);
   }
 }
