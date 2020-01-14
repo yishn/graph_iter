@@ -3,7 +3,7 @@ use vertex::Vertex;
 use edge::{Edge, WeightedEdge};
 use graph_adapters::Reversed;
 use vertex_container::{DfsContainer, BfsContainer};
-use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
+use vertex_traverser::{DefaultVertexTrav, AstarVertexTrav};
 
 /// Represents a directed, potentially infinite, graph.
 ///
@@ -58,7 +58,7 @@ use vertex_traverser::{DefaultVertexTrav, DijkstraVertexTrav};
 /// assert_eq!(path.len(), 8);
 /// assert_eq!(path[7], (0, 5));
 /// ```
-pub trait Graph<V: Vertex> {
+pub trait Graph<V: Vertex> where Self: Sized {
   type NeighborsIterator: IntoIterator<Item = V>;
 
   /// Generates a list of adjacent vertices that can be reached from `vertex` by traveling along an edge.
@@ -66,21 +66,18 @@ pub trait Graph<V: Vertex> {
 
   /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
   /// in a breadth-first manner.
-  fn bfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, BfsContainer<V>>
-  where Self: Sized {
+  fn bfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, BfsContainer<V>> {
     DefaultVertexTrav::new(self, start.clone())
   }
 
   /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
   /// in a depth-first manner.
-  fn dfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, DfsContainer<V>>
-  where Self: Sized {
+  fn dfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, DfsContainer<V>> {
     DefaultVertexTrav::new(self, start.clone())
   }
 
   /// Returns a graph by reversing all edges.
-  fn rev(&self) -> Reversed<'_, Self>
-  where Self: Sized + ReversableGraph<V> {
+  fn rev(&self) -> Reversed<'_, Self> where Self: ReversableGraph<V> {
     Reversed::new(self)
   }
 }
@@ -159,7 +156,7 @@ pub trait EdgedGraph<V: Vertex, E: Edge>: Graph<V> {
   /// [`Add`]: https://doc.rust-lang.org/core/ops/arith/trait.Add.html
   /// [`Default`]: https://doc.rust-lang.org/core/default/trait.Default.html
   ///
-  /// Keep in mind that the [Dijkstra's algorithm](https://en.wikipedia.org/wiki/Dijkstra's_algorithm)
+  /// Keep in mind that [Dijkstra's algorithm](https://en.wikipedia.org/wiki/Dijkstra's_algorithm)
   /// only supports non-negative weights. In terms of our edge type `E` this means the following
   /// conditions should hold
   ///
@@ -168,10 +165,30 @@ pub trait EdgedGraph<V: Vertex, E: Edge>: Graph<V> {
   /// e1 >= E::default()
   /// ```
   ///
-  /// for all `E` types `e1` and `e2`.
-  fn dijkstra(&self, start: &V) -> DijkstraVertexTrav<'_, Self, V, E>
-  where E: WeightedEdge, Self: Sized {
-    DijkstraVertexTrav::new(self, start.clone())
+  /// for all edges `e1` and `e2`.
+  fn dijkstra(&self, start: &V) -> AstarVertexTrav<'_, Self, V, E, fn(&V) -> E>
+  where E: WeightedEdge {
+    AstarVertexTrav::new(self, start.clone())
+  }
+
+  /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
+  /// in a smallest-estimated-weight-sum-first manner using a custom estimator function. The estimator
+  /// function estimates the cost for traveling from `start` to its vertex argument.
+  ///
+  /// Like [`dijkstra`](#method.dijkstra), this function requires your edge type `E` to implement
+  /// the [`WeightedEdge`](./trait.WeightedEdge.html) trait and only supports non-negative weights.
+  ///
+  /// The [A* algorithm](https://en.wikipedia.org/wiki/A*_search_algorithm) will be guaranteed to
+  /// find an optimal path if the estimator function is *monotone*, i.e.
+  ///
+  /// ~~~text
+  /// estimator(w) <= estimator(v) + graph.edges(v, w).min().unwrap()
+  /// ~~~
+  ///
+  /// for all vertices `v`, `w` that have an edge from `v` to `w`.
+  fn astar<F>(&self, start: &V, estimator: F) -> AstarVertexTrav<'_, Self, V, E, F>
+  where F: Fn(&V) -> E, E: WeightedEdge {
+    AstarVertexTrav::with_estimator(self, start.clone(), estimator)
   }
 }
 
@@ -232,7 +249,7 @@ mod tests {
   }
 
   #[test]
-  fn test_dijkstra_algorithm() {
+  fn test_dijkstra_astar_algorithm() {
     let graph = FullyConnectedGraph {
       vertices: vec![(0, 0), (0, 10), (2, 5), (4, 7), (10, 0), (10, 10)]
     };
@@ -241,5 +258,13 @@ mod tests {
     let path = dijkstra_traverser.construct_path(&(10, 10)).unwrap();
 
     assert_eq!(path, [(0, 0), (2, 5), (4, 7), (10, 10)]);
+
+    let mut astar_traverser = graph.astar(&(0, 0), |v| {
+      graph.edges(&(0, 0), v)[0]
+    });
+
+    let astar_path = astar_traverser.construct_path(&(10, 10)).unwrap();
+
+    assert_eq!(astar_path, path);
   }
 }

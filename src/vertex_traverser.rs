@@ -112,33 +112,51 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
 }
 
 #[derive(Clone)]
-pub struct DijkstraVertexTrav<'a, G, V, E>
-where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
+pub struct AstarVertexTrav<'a, G, V, E, F> {
   graph: &'a G,
   start: V,
-  queue: DijkstraContainer<V, E>,
+  queue: DijkstraContainer<(V, E), E>,
   predecessor_map: HashMap<V, Option<V>>,
-  min_edge_map: HashMap<V, E>
+  min_edge_map: HashMap<V, E>,
+  estimator: Option<F>
 }
 
-impl<'a, G, V, E> DijkstraVertexTrav<'a, G, V, E>
-where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
-  pub(crate) fn new(graph: &G, start: V) -> DijkstraVertexTrav<'_, G, V, E> {
+impl<'a, G, V, E, F> AstarVertexTrav<'a, G, V, E, F>
+where
+  G: EdgedGraph<V, E>,
+  V: Vertex,
+  E: WeightedEdge,
+  F: Fn(&V) -> E
+{
+  pub(crate) fn new(graph: &G, start: V) -> AstarVertexTrav<'_, G, V, E, F> {
     let mut container = DijkstraContainer::new();
-    container.push((start.clone(), E::default()));
+    container.push(((start.clone(), E::default()), E::default()));
 
-    DijkstraVertexTrav {
+    AstarVertexTrav {
       graph,
       start: start.clone(),
       queue: container,
       predecessor_map: iter::once((start.clone(), None)).collect(),
-      min_edge_map: iter::once((start, E::default())).collect()
+      min_edge_map: iter::once((start, E::default())).collect(),
+      estimator: None
     }
+  }
+
+  pub(crate) fn with_estimator(graph: &G, start: V, estimator: F) -> AstarVertexTrav<'_, G, V, E, F> {
+    let mut result = AstarVertexTrav::new(graph, start);
+    result.estimator = Some(estimator);
+
+    result
   }
 }
 
-impl<'a, G, V, E> VertexTraverser<V> for DijkstraVertexTrav<'a, G, V, E>
-where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
+impl<'a, G, V, E, F> VertexTraverser<V> for AstarVertexTrav<'a, G, V, E, F>
+where
+  G: EdgedGraph<V, E>,
+  V: Vertex,
+  E: WeightedEdge,
+  F: Fn(&V) -> E
+{
   fn first(&self) -> V {
     self.start.clone()
   }
@@ -155,7 +173,7 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
   fn next(&mut self) -> Option<V> {
     let vertex_edge = self.queue.pop();
 
-    vertex_edge.map(|(vertex, edge)| {
+    vertex_edge.map(|((vertex, edge), _)| {
       for neighbor in self.graph.neighbors(&vertex) {
         let outgoing_edge = self.graph
           .edges(&vertex, &neighbor)
@@ -177,7 +195,13 @@ where G: EdgedGraph<V, E>, V: Vertex, E: WeightedEdge {
           }
 
           if edge_shorter {
-            self.queue.push((neighbor.clone(), new_edge));
+            let mut score = new_edge.clone();
+
+            if let Some(estimator) = self.estimator.as_ref() {
+              score = score + estimator(&neighbor);
+            }
+
+            self.queue.push(((neighbor.clone(), new_edge), score));
             self.predecessor_map.insert(neighbor, Some(vertex.clone()));
           }
         }
