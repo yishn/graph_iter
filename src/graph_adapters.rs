@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use graph::*;
 use vertex_traverser::VertexTraverser;
 
-pub struct Iter<'a, V: Vertex, T: VertexTraverser<V>>(&'a mut T, PhantomData<V>);
+pub struct Iter<'a, V, T>(&'a mut T, PhantomData<&'a V>);
 
 impl<'a, V: Vertex, T: VertexTraverser<V>> Iter<'a, V, T> {
   pub(crate) fn new(traverser: &'a mut T) -> Iter<'a, V, T> {
@@ -19,7 +19,7 @@ impl<'a, V: Vertex, T: VertexTraverser<V>> Iterator for Iter<'a, V, T> {
   }
 }
 
-pub struct PredecessorIter<'a, V: Vertex, T: VertexTraverser<V>>(&'a T, Option<V>);
+pub struct PredecessorIter<'a, V, T>(&'a T, Option<V>);
 
 impl<'a, V: Vertex, T: VertexTraverser<V>> PredecessorIter<'a, V, T> {
   pub(crate) fn new(traverser: &'a T, vertex: V) -> PredecessorIter<'a, V, T> {
