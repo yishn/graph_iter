@@ -58,23 +58,23 @@ impl<V, E> FiniteGraph<V, E> {
   }
 
   /// An iterator visiting all vertices in arbitrary order.
-  pub fn all_vertices(&self) -> impl Iterator<Item = &V> {
-    self.vertices_map.values()
+  pub fn all_vertices(&self) -> impl Iterator<Item = (Id, &V)> {
+    self.vertices_map.iter().map(|(id, v)| (*id, v))
   }
 
   /// An iterator visiting all vertices mutably in arbitrary order.
-  pub fn all_vertices_mut(&mut self) -> impl Iterator<Item = &mut V> {
-    self.vertices_map.values_mut()
+  pub fn all_vertices_mut(&mut self) -> impl Iterator<Item = (Id, &mut V)> {
+    self.vertices_map.iter_mut().map(|(id, v)| (*id, v))
   }
 
   /// An iterator visiting all edges in arbitrary order.
-  pub fn all_edges(&self) -> impl Iterator<Item = &E> {
-    self.edges_map.values().map(|(e, _, _)| e)
+  pub fn all_edges(&self) -> impl Iterator<Item = (Id, &E)> {
+    self.edges_map.iter().map(|(id, (e, _, _))| (*id, e))
   }
 
   /// An iterator visiting all edges mutably in arbitrary order.
-  pub fn all_edges_mut(&mut self) -> impl Iterator<Item = &mut E> {
-    self.edges_map.values_mut().map(|(e, _, _)| e)
+  pub fn all_edges_mut(&mut self) -> impl Iterator<Item = (Id, &mut E)> {
+    self.edges_map.iter_mut().map(|(id, (e, _, _))| (*id, e))
   }
 
   /// Returns a reference to the value corresponding to the vertex.
@@ -251,6 +251,7 @@ mod tests {
     let e4 = graph.insert_edge(b, c, 4).unwrap();
     let e5 = graph.insert_edge(d, c, 5).unwrap();
 
+    assert_eq!(graph.len(), (4, 5));
     assert_eq!(graph.all_vertices().count(), 4);
     assert_eq!(graph.all_edges().count(), 5);
 
