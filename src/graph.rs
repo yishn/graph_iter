@@ -282,4 +282,14 @@ mod tests {
 
     assert_eq!(astar_path, path);
   }
+
+  #[test]
+  fn test_dfs_postordering() {
+    let graph = NumberGraph {
+      max: 10
+    };
+
+    let mut topological_order = graph.dfs(&1).post_iter().collect::<Vec<_>>();
+    topological_order.reverse();
+  }
 }

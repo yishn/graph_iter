@@ -5,7 +5,7 @@ use graph::EdgedGraph;
 use vertex::Vertex;
 use edge::WeightedEdge;
 use vertex_container::{VertexContainer, DfsContainer, BfsContainer, AstarContainer};
-use graph_adapters::{Iter, PredecessorIter, PostIter};
+use graph_adapters::{Iter, PredecessorIter, PrePostIter, PostIter};
 
 /// An interface for dealing with vertex traversers over a graph.
 pub trait VertexTraverser<V: Vertex> where Self: Sized {
@@ -99,7 +99,8 @@ impl<'a, G: Graph<V>, V: Vertex> VertexTraverser<V> for BfsVertexTrav<'a, G, V> 
   }
 }
 
-pub(crate) enum PrePostItem<V> {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PrePostItem<V> {
   PreorderItem(V),
   PostorderItem(V)
 }
@@ -109,7 +110,7 @@ pub struct DfsVertexTrav<'a, G, V> {
   graph: &'a G,
   start: V,
   queue: DfsContainer<V>,
-  predecessor_map: HashMap<V, Option<V>>
+  predecessor_finished_map: HashMap<V, (Option<V>, bool)>
 }
 
 impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
@@ -121,7 +122,7 @@ impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
       graph,
       start: start.clone(),
       queue: container,
-      predecessor_map: iter::once((start, None)).collect()
+      predecessor_finished_map: iter::once((start, (None, false))).collect()
     }
   }
 }
@@ -130,22 +131,34 @@ impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
   pub(crate) fn next_pre_post(&mut self) -> Option<PrePostItem<V>> {
     let vertex = self.queue.peek();
 
-    if vertex.map(|v| self.predecessor_map.contains_key(v)).unwrap_or(false) {
+    if {
+      vertex
+      .and_then(|v| self.predecessor_finished_map.get(v))
+      .map(|(_, finished)| *finished)
+      .unwrap_or(false)
+    } {
       return self.queue.pop().map(|v| PrePostItem::PostorderItem(v));
     }
 
     vertex.cloned().map(|vertex| {
+      let map_item = self.predecessor_finished_map.get_mut(&vertex).unwrap();
+      map_item.1 = true;
+
       for neighbor in self.graph.neighbors(&vertex) {
-        if self.predecessor_map.contains_key(&neighbor) {
+        if self.predecessor_finished_map.contains_key(&neighbor) {
           continue;
         }
 
         self.queue.push(neighbor.clone());
-        self.predecessor_map.insert(neighbor.clone(), Some(vertex.clone()));
+        self.predecessor_finished_map.insert(neighbor.clone(), (Some(vertex.clone()), false));
       }
 
       PrePostItem::PreorderItem(vertex)
     })
+  }
+
+  pub fn pre_post_iter(&mut self) -> PrePostIter<'_, 'a, G, V> {
+    PrePostIter::new(self)
   }
 
   pub fn post_iter(&mut self) -> PostIter<'_, 'a, G, V> {
@@ -159,8 +172,8 @@ impl<'a, G: Graph<V>, V: Vertex> VertexTraverser<V> for DfsVertexTrav<'a, G, V> 
   }
 
   fn predecessor(&self, vertex: &V) -> Option<V> {
-    self.predecessor_map.get(vertex)
-    .and_then(|predecessor| predecessor.clone())
+    self.predecessor_finished_map.get(vertex)
+    .and_then(|(predecessor, _)| predecessor.clone())
   }
 
   fn next(&mut self) -> Option<V> {
