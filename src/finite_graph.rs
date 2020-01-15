@@ -4,6 +4,7 @@ use std::hash::Hash;
 use graph::Graph;
 use edge::Edge;
 
+/// An identifier struct to reference vertices and edges in [`FiniteGraph`](struct.FiniteGraph.html).
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Id(usize);
 
@@ -14,6 +15,7 @@ impl Id {
   }
 }
 
+/// A collection struct to hold vertices and edges of a graph.
 #[derive(Clone)]
 pub struct FiniteGraph<V, E> {
   id: Id,
