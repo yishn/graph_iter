@@ -4,7 +4,7 @@ use std::iter;
 use graph::EdgedGraph;
 use vertex::Vertex;
 use edge::WeightedEdge;
-use vertex_container::{VertexContainer, DijkstraContainer};
+use vertex_container::{VertexContainer, AstarContainer};
 use graph_adapters::{Iter, PredecessorIter};
 
 /// An interface for dealing with vertex traversers over a graph.
@@ -106,7 +106,7 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
 pub struct AstarVertexTrav<'a, G, V, E, F> {
   graph: &'a G,
   start: V,
-  queue: DijkstraContainer<(V, E), E>,
+  queue: AstarContainer<(V, E), E>,
   predecessor_map: HashMap<V, Option<V>>,
   min_edge_map: HashMap<V, E>,
   estimator: Option<F>
@@ -120,8 +120,8 @@ where
   F: Fn(&V) -> E
 {
   pub(crate) fn new(graph: &G, start: V) -> AstarVertexTrav<'_, G, V, E, F> {
-    let mut container = DijkstraContainer::new();
-    container.push(((start.clone(), E::default()), E::default()));
+    let mut container = AstarContainer::new();
+    container.push((start.clone(), E::default()), E::default());
 
     AstarVertexTrav {
       graph,
@@ -188,7 +188,7 @@ where
               score = score + estimator(&neighbor);
             }
 
-            self.queue.push(((neighbor.clone(), new_edge), score));
+            self.queue.push((neighbor.clone(), new_edge), score);
             self.predecessor_map.insert(neighbor, Some(vertex.clone()));
           }
         }
