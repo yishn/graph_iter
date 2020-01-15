@@ -5,7 +5,7 @@ use graph::EdgedGraph;
 use vertex::Vertex;
 use edge::WeightedEdge;
 use vertex_container::{VertexContainer, DfsContainer, BfsContainer, AstarContainer};
-use graph_adapters::{Iter, PredecessorIter};
+use graph_adapters::{Iter, PredecessorIter, PostIter};
 
 /// An interface for dealing with vertex traversers over a graph.
 pub trait VertexTraverser<V: Vertex> where Self: Sized {
@@ -99,6 +99,11 @@ impl<'a, G: Graph<V>, V: Vertex> VertexTraverser<V> for BfsVertexTrav<'a, G, V> 
   }
 }
 
+pub(crate) enum PrePostItem<V> {
+  PreorderItem(V),
+  PostorderItem(V)
+}
+
 #[derive(Clone)]
 pub struct DfsVertexTrav<'a, G, V> {
   graph: &'a G,
@@ -121,6 +126,33 @@ impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
   }
 }
 
+impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
+  pub(crate) fn next_pre_post(&mut self) -> Option<PrePostItem<V>> {
+    let vertex = self.queue.peek();
+
+    if vertex.map(|v| self.predecessor_map.contains_key(v)).unwrap_or(false) {
+      return self.queue.pop().map(|v| PrePostItem::PostorderItem(v));
+    }
+
+    vertex.cloned().map(|vertex| {
+      for neighbor in self.graph.neighbors(&vertex) {
+        if self.predecessor_map.contains_key(&neighbor) {
+          continue;
+        }
+
+        self.queue.push(neighbor.clone());
+        self.predecessor_map.insert(neighbor.clone(), Some(vertex.clone()));
+      }
+
+      PrePostItem::PreorderItem(vertex)
+    })
+  }
+
+  pub fn post_iter(&mut self) -> PostIter<'_, 'a, G, V> {
+    PostIter::new(self)
+  }
+}
+
 impl<'a, G: Graph<V>, V: Vertex> VertexTraverser<V> for DfsVertexTrav<'a, G, V> {
   fn first(&self) -> V {
     self.start.clone()
@@ -132,20 +164,13 @@ impl<'a, G: Graph<V>, V: Vertex> VertexTraverser<V> for DfsVertexTrav<'a, G, V> 
   }
 
   fn next(&mut self) -> Option<V> {
-    let vertex = self.queue.pop();
-
-    vertex.map(|vertex| {
-      for neighbor in self.graph.neighbors(&vertex) {
-        if self.predecessor_map.contains_key(&neighbor) {
-          continue;
-        }
-
-        self.queue.push(neighbor.clone());
-        self.predecessor_map.insert(neighbor.clone(), Some(vertex.clone()));
+    loop {
+      match self.next_pre_post() {
+        Some(PrePostItem::PreorderItem(v)) => return Some(v),
+        Some(_) => continue,
+        None => return None
       }
-
-      vertex
-    })
+    }
   }
 }
 
