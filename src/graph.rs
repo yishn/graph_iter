@@ -64,14 +64,14 @@ pub trait Graph<V: Vertex> where Self: Sized {
   /// Generates a list of adjacent vertices that can be reached from `vertex` by traveling along an edge.
   fn neighbors(&self, vertex: &V) -> Self::NeighborsIterator;
 
-  /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
-  /// in a breadth-first manner.
+  /// Returns a [`VertexTraverser`](./vertex_traverser/trait.VertexTraverser.html) that iterates the
+  /// graph vertices in a breadth-first manner.
   fn bfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, BfsContainer<V>> {
     DefaultVertexTrav::new(self, start.clone())
   }
 
-  /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
-  /// in a depth-first manner.
+  /// Returns a [`VertexTraverser`](./vertex_traverser/trait.VertexTraverser.html) that iterates the
+  /// graph vertices in a depth-first manner.
   fn dfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, DfsContainer<V>> {
     DefaultVertexTrav::new(self, start.clone())
   }
@@ -147,10 +147,10 @@ pub trait EdgedGraph<V: Vertex, E: Edge>: Graph<V> {
   /// Generates a list of edges that connect `vertex` with `other`.
   fn edges(&self, vertex: &V, other: &V) -> Self::EdgesIterator;
 
-  /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
-  /// in a smallest-weight-sum-first manner. This function requires your edge type `E` to implement
-  /// the [`WeightedEdge`](./trait.WeightedEdge.html) trait, i.e. additionally implement [`Ord`],
-  /// [`Add`], and [`Default`].
+  /// Returns a [`VertexTraverser`](./vertex_traverser/trait.VertexTraverser.html) that iterates the
+  /// graph vertices in a smallest-weight-sum-first manner. This function requires your edge type `E`
+  /// to implement the [`WeightedEdge`](./trait.WeightedEdge.html) trait, i.e. additionally
+  /// implement [`Ord`], [`Add`], and [`Default`].
   ///
   /// [`Ord`]: https://doc.rust-lang.org/core/cmp/trait.Ord.html
   /// [`Add`]: https://doc.rust-lang.org/core/ops/arith/trait.Add.html
@@ -171,9 +171,9 @@ pub trait EdgedGraph<V: Vertex, E: Edge>: Graph<V> {
     AstarVertexTrav::new(self, start.clone())
   }
 
-  /// Returns a [`VertexTraverser`](./trait.VertexTraverser.html) that iterates the graph vertices
-  /// in a smallest-estimated-weight-sum-first manner using a custom estimator function. The estimator
-  /// function estimates the cost for traveling from `start` to its vertex argument.
+  /// Returns a [`VertexTraverser`](./vertex_traverser/trait.VertexTraverser.html) that iterates the
+  /// graph vertices in a smallest-estimated-weight-sum-first manner using a custom estimator function.
+  /// The estimator function estimates the cost for traveling from `start` to its vertex argument.
   ///
   /// Like [`dijkstra`](#method.dijkstra), this function requires your edge type `E` to implement
   /// the [`WeightedEdge`](./trait.WeightedEdge.html) trait and only supports non-negative weights.
