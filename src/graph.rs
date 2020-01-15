@@ -2,8 +2,7 @@ use crate::*;
 use vertex::Vertex;
 use edge::{Edge, WeightedEdge};
 use graph_adapters::Reversed;
-use vertex_container::{DfsContainer, BfsContainer};
-use vertex_traverser::{DefaultVertexTrav, AstarVertexTrav};
+use vertex_traverser::{DfsVertexTrav, BfsVertexTrav, AstarVertexTrav};
 
 /// Represents a directed, potentially infinite, graph.
 ///
@@ -66,14 +65,14 @@ pub trait Graph<V: Vertex> where Self: Sized {
 
   /// Returns a [`VertexTraverser`](./vertex_traverser/trait.VertexTraverser.html) that iterates the
   /// graph vertices in a breadth-first manner.
-  fn bfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, BfsContainer<V>> {
-    DefaultVertexTrav::new(self, start.clone())
+  fn bfs(&self, start: &V) -> BfsVertexTrav<'_, Self, V> {
+    BfsVertexTrav::new(self, start.clone())
   }
 
   /// Returns a [`VertexTraverser`](./vertex_traverser/trait.VertexTraverser.html) that iterates the
   /// graph vertices in a depth-first manner.
-  fn dfs(&self, start: &V) -> DefaultVertexTrav<'_, Self, V, DfsContainer<V>> {
-    DefaultVertexTrav::new(self, start.clone())
+  fn dfs(&self, start: &V) -> DfsVertexTrav<'_, Self, V> {
+    DfsVertexTrav::new(self, start.clone())
   }
 
   /// Returns a graph by reversing all edges.

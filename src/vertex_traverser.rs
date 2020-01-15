@@ -4,7 +4,7 @@ use std::iter;
 use graph::EdgedGraph;
 use vertex::Vertex;
 use edge::WeightedEdge;
-use vertex_container::{VertexContainer, AstarContainer};
+use vertex_container::{VertexContainer, DfsContainer, BfsContainer, AstarContainer};
 use graph_adapters::{Iter, PredecessorIter};
 
 /// An interface for dealing with vertex traversers over a graph.
@@ -50,21 +50,19 @@ pub trait VertexTraverser<V: Vertex> where Self: Sized {
 }
 
 #[derive(Clone)]
-pub struct DefaultVertexTrav<'a, G, V, C>
-where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
+pub struct BfsVertexTrav<'a, G, V> {
   graph: &'a G,
   start: V,
-  queue: C,
+  queue: BfsContainer<V>,
   predecessor_map: HashMap<V, Option<V>>
 }
 
-impl<'a, G, V, C> DefaultVertexTrav<'a, G, V, C>
-where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
-  pub(crate) fn new(graph: &G, start: V) -> DefaultVertexTrav<'_, G, V, C> {
-    let mut container = C::new();
+impl<'a, G: Graph<V>, V: Vertex> BfsVertexTrav<'a, G, V> {
+  pub(crate) fn new(graph: &G, start: V) -> BfsVertexTrav<'_, G, V> {
+    let mut container = BfsContainer::new();
     container.push(start.clone());
 
-    DefaultVertexTrav {
+    BfsVertexTrav {
       graph,
       start: start.clone(),
       queue: container,
@@ -73,8 +71,57 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
   }
 }
 
-impl<'a, G, V, C> VertexTraverser<V> for DefaultVertexTrav<'a, G, V, C>
-where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
+impl<'a, G: Graph<V>, V: Vertex> VertexTraverser<V> for BfsVertexTrav<'a, G, V> {
+  fn first(&self) -> V {
+    self.start.clone()
+  }
+
+  fn predecessor(&self, vertex: &V) -> Option<V> {
+    self.predecessor_map.get(vertex)
+    .and_then(|predecessor| predecessor.clone())
+  }
+
+  fn next(&mut self) -> Option<V> {
+    let vertex = self.queue.pop();
+
+    vertex.map(|vertex| {
+      for neighbor in self.graph.neighbors(&vertex) {
+        if self.predecessor_map.contains_key(&neighbor) {
+          continue;
+        }
+
+        self.queue.push(neighbor.clone());
+        self.predecessor_map.insert(neighbor.clone(), Some(vertex.clone()));
+      }
+
+      vertex
+    })
+  }
+}
+
+#[derive(Clone)]
+pub struct DfsVertexTrav<'a, G, V> {
+  graph: &'a G,
+  start: V,
+  queue: DfsContainer<V>,
+  predecessor_map: HashMap<V, Option<V>>
+}
+
+impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
+  pub(crate) fn new(graph: &G, start: V) -> DfsVertexTrav<'_, G, V> {
+    let mut container = DfsContainer::new();
+    container.push(start.clone());
+
+    DfsVertexTrav {
+      graph,
+      start: start.clone(),
+      queue: container,
+      predecessor_map: iter::once((start, None)).collect()
+    }
+  }
+}
+
+impl<'a, G: Graph<V>, V: Vertex> VertexTraverser<V> for DfsVertexTrav<'a, G, V> {
   fn first(&self) -> V {
     self.start.clone()
   }

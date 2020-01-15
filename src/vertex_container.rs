@@ -1,18 +1,15 @@
 use std::cmp::Reverse;
 use std::collections::{VecDeque, HashMap, BinaryHeap};
 
-#[derive(Clone)]
-pub struct DfsContainer<V>(Vec<V>);
-
-#[derive(Clone)]
-pub struct BfsContainer<V>(VecDeque<V>);
-
 pub trait VertexContainer<V> {
   fn new() -> Self;
   fn pop(&mut self) -> Option<V>;
   fn peek(&self) -> Option<&V>;
   fn push(&mut self, value: V);
 }
+
+#[derive(Clone)]
+pub struct DfsContainer<V>(Vec<V>);
 
 impl<V> VertexContainer<V> for DfsContainer<V> {
   fn new() -> DfsContainer<V> {
@@ -31,6 +28,9 @@ impl<V> VertexContainer<V> for DfsContainer<V> {
     self.0.push(value);
   }
 }
+
+#[derive(Clone)]
+pub struct BfsContainer<V>(VecDeque<V>);
 
 impl<V> VertexContainer<V> for BfsContainer<V> {
   fn new() -> BfsContainer<V> {
