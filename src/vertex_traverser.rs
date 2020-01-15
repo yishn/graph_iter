@@ -55,8 +55,7 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
   graph: &'a G,
   start: V,
   queue: C,
-  predecessor_map: HashMap<V, Option<V>>,
-  cycle_detected: bool
+  predecessor_map: HashMap<V, Option<V>>
 }
 
 impl<'a, G, V, C> DefaultVertexTrav<'a, G, V, C>
@@ -69,21 +68,8 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
       graph,
       start: start.clone(),
       queue: container,
-      predecessor_map: iter::once((start, None)).collect(),
-      cycle_detected: false
+      predecessor_map: iter::once((start, None)).collect()
     }
-  }
-
-  /// Returns `true` if we can reach a cycle by traversing the graph starting
-  /// with the start vertex.
-  pub fn is_cyclic(mut self) -> bool {
-    while !self.cycle_detected {
-      if let None = self.next() {
-        break;
-      }
-    }
-
-    self.cycle_detected
   }
 }
 
@@ -104,7 +90,6 @@ where G: Graph<V>, V: Vertex, C: VertexContainer<V> {
     vertex.map(|vertex| {
       for neighbor in self.graph.neighbors(&vertex) {
         if self.predecessor_map.contains_key(&neighbor) {
-          self.cycle_detected = true;
           continue;
         }
 

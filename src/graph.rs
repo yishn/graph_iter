@@ -220,14 +220,13 @@ mod tests {
   }
 
   impl Graph<usize> for NumberGraph {
-    type NeighborsIterator = Option<usize>;
+    type NeighborsIterator = Vec<usize>;
 
     fn neighbors(&self, &vertex: &usize) -> Self::NeighborsIterator {
-      if vertex < self.max {
-        Some(vertex + 1)
-      } else {
-        None
-      }
+      (2..self.max)
+      .map(|i| vertex * i)
+      .take_while(|&v| v <= self.max)
+      .collect()
     }
   }
 
@@ -283,20 +282,5 @@ mod tests {
     let astar_path = astar_traverser.construct_path(&(10, 10)).unwrap();
 
     assert_eq!(astar_path, path);
-  }
-
-  #[test]
-  fn test_cycle_detection() {
-    let graph = FullyConnectedGraph {
-      vertices: vec![(0, 0), (0, 10), (2, 5), (4, 7), (10, 0), (10, 10)]
-    };
-
-    assert_eq!(graph.dfs(&(0, 0)).is_cyclic(), true);
-
-    let graph = NumberGraph {
-      max: 5
-    };
-
-    assert_eq!(graph.dfs(&0).is_cyclic(), false);
   }
 }
