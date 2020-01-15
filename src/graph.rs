@@ -179,7 +179,8 @@ pub trait EdgedGraph<V: Vertex, E: Edge>: Graph<V> {
   /// the [`WeightedEdge`](./trait.WeightedEdge.html) trait and only supports non-negative weights.
   ///
   /// The [A* algorithm](https://en.wikipedia.org/wiki/A*_search_algorithm) will be guaranteed to
-  /// find an optimal path if the estimator function is *monotone*, i.e.
+  /// find an optimal path if the estimator function is *monotone*, i.e. it has to satisfy the following
+  /// triangle inequality
   ///
   /// ~~~text
   /// estimator(w) <= estimator(v) + graph.edges(v, w).min().unwrap()
