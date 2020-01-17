@@ -125,9 +125,7 @@ impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
       predecessor_finished_map: HashMap::new()
     }
   }
-}
 
-impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
   pub(crate) fn next_pre_post(&mut self) -> Option<PrePostItem<V>> {
     let vertex = loop {
       let item = self.queue.peek();
