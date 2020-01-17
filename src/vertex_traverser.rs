@@ -109,48 +109,52 @@ pub enum PrePostItem<V> {
 pub struct DfsVertexTrav<'a, G, V> {
   graph: &'a G,
   start: V,
-  queue: DfsContainer<V>,
+  queue: DfsContainer<(V, Option<V>)>,
   predecessor_finished_map: HashMap<V, (Option<V>, bool)>
 }
 
 impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
   pub(crate) fn new(graph: &G, start: V) -> DfsVertexTrav<'_, G, V> {
     let mut container = DfsContainer::new();
-    container.push(start.clone());
+    container.push((start.clone(), None));
 
     DfsVertexTrav {
       graph,
       start: start.clone(),
       queue: container,
-      predecessor_finished_map: iter::once((start, (None, false))).collect()
+      predecessor_finished_map: HashMap::new()
     }
   }
 }
 
 impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
   pub(crate) fn next_pre_post(&mut self) -> Option<PrePostItem<V>> {
-    let vertex = self.queue.peek();
+    let vertex = loop {
+      let item = self.queue.peek();
+      let predecessor_finished_map = &mut self.predecessor_finished_map;
 
-    if {
-      vertex
-      .and_then(|v| self.predecessor_finished_map.get(v))
-      .map(|(_, finished)| *finished)
-      .unwrap_or(false)
-    } {
-      return self.queue.pop().map(|v| PrePostItem::PostorderItem(v));
-    }
+      match (item, item.and_then(|(v, _)| predecessor_finished_map.get_mut(v))) {
+        (_, Some((_, finished))) => {
+          let item = self.queue.pop();
+
+          if *finished {
+            continue;
+          } else {
+            *finished = true;
+            return item.map(|(v, _)| PrePostItem::PostorderItem(v));
+          }
+        },
+        (Some((v, p)), None) => {
+          predecessor_finished_map.insert(v.clone(), (p.clone(), false));
+          break self.queue.peek().map(|(v, _)| v);
+        },
+        (None, None) => return None
+      }
+    };
 
     vertex.cloned().map(|vertex| {
-      let map_item = self.predecessor_finished_map.get_mut(&vertex).unwrap();
-      map_item.1 = true;
-
       for neighbor in self.graph.neighbors(&vertex) {
-        if self.predecessor_finished_map.contains_key(&neighbor) {
-          continue;
-        }
-
-        self.queue.push(neighbor.clone());
-        self.predecessor_finished_map.insert(neighbor.clone(), (Some(vertex.clone()), false));
+        self.queue.push((neighbor.clone(), Some(vertex.clone())));
       }
 
       PrePostItem::PreorderItem(vertex)

@@ -284,12 +284,17 @@ mod tests {
   }
 
   #[test]
-  fn test_dfs_postordering() {
+  fn test_dfs_prepostordering() {
     let graph = NumberGraph {
-      numbers: vec![2, 4, 6, 8, 12]
+      numbers: vec![1, 6, 3, 4, 2]
     };
+
+    let preorder = graph.dfs(&1).iter().collect::<Vec<_>>();
+    assert_eq!(preorder, vec![1, 2, 4, 6, 3]);
 
     let mut topological_order = graph.dfs(&1).post_iter().collect::<Vec<_>>();
     topological_order.reverse();
+
+    assert_eq!(topological_order, vec![1, 3, 2, 6, 4]);
   }
 }
