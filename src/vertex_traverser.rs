@@ -105,6 +105,12 @@ pub enum PrePostItem<V> {
   PostorderItem(V)
 }
 
+pub(crate) enum DfsInnerIterEvent<V> {
+  PreorderItem(V),
+  PostorderItem(V),
+  CycleEdge(V, V),
+}
+
 #[derive(Clone)]
 pub struct DfsVertexTrav<'a, G, V> {
   graph: &'a G,
@@ -126,7 +132,7 @@ impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
     }
   }
 
-  pub(crate) fn next_pre_post(&mut self) -> Option<PrePostItem<V>> {
+  pub(crate) fn next_inner(&mut self) -> Option<DfsInnerIterEvent<V>> {
     let vertex = loop {
       let item = self.queue.peek();
       let predecessor_finished_map = &mut self.predecessor_finished_map;
@@ -139,24 +145,22 @@ impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
             continue;
           } else {
             *finished = true;
-            return item.map(|(v, _)| PrePostItem::PostorderItem(v));
+            return item.map(|(v, _)| DfsInnerIterEvent::PostorderItem(v));
           }
         },
         (Some((v, p)), None) => {
           predecessor_finished_map.insert(v.clone(), (p.clone(), false));
-          break self.queue.peek().map(|(v, _)| v);
+          break v.clone();
         },
         (None, None) => return None
       }
     };
 
-    vertex.cloned().map(|vertex| {
-      for neighbor in self.graph.neighbors(&vertex) {
-        self.queue.push((neighbor.clone(), Some(vertex.clone())));
-      }
+    for neighbor in self.graph.neighbors(&vertex) {
+      self.queue.push((neighbor.clone(), Some(vertex.clone())));
+    }
 
-      PrePostItem::PreorderItem(vertex)
-    })
+    Some(DfsInnerIterEvent::PreorderItem(vertex))
   }
 
   pub fn pre_post_iter(&mut self) -> PrePostIter<'_, 'a, G, V> {
@@ -180,8 +184,8 @@ impl<'a, G: Graph<V>, V: Vertex> VertexTraverser<V> for DfsVertexTrav<'a, G, V> 
 
   fn next(&mut self) -> Option<V> {
     loop {
-      match self.next_pre_post() {
-        Some(PrePostItem::PreorderItem(v)) => return Some(v),
+      match self.next_inner() {
+        Some(DfsInnerIterEvent::PreorderItem(v)) => return Some(v),
         Some(_) => continue,
         None => return None
       }

@@ -1,7 +1,7 @@
 use crate::*;
 use std::marker::PhantomData;
 use graph::*;
-use vertex_traverser::{VertexTraverser, PrePostItem, DfsVertexTrav};
+use vertex_traverser::{VertexTraverser, PrePostItem, DfsInnerIterEvent, DfsVertexTrav};
 
 pub struct Iter<'a, V, T>(&'a mut T, PhantomData<&'a V>);
 
@@ -52,7 +52,14 @@ impl<'a, 'b, G: Graph<V>, V: Vertex> Iterator for PrePostIter<'a, 'b, G, V> {
   type Item = PrePostItem<V>;
 
   fn next(&mut self) -> Option<PrePostItem<V>> {
-    self.0.next_pre_post()
+    loop {
+      match self.0.next_inner() {
+        Some(DfsInnerIterEvent::PreorderItem(v)) => break Some(PrePostItem::PreorderItem(v)),
+        Some(DfsInnerIterEvent::PostorderItem(v)) => break Some(PrePostItem::PostorderItem(v)),
+        None => break None,
+        _ => continue
+      }
+    }
   }
 }
 
@@ -69,8 +76,8 @@ impl<'a, 'b, G: Graph<V>, V: Vertex> Iterator for PostIter<'a, 'b, G, V> {
 
   fn next(&mut self) -> Option<V> {
     loop {
-      match self.0.next_pre_post() {
-        Some(PrePostItem::PostorderItem(v)) => return Some(v),
+      match self.0.next_inner() {
+        Some(DfsInnerIterEvent::PostorderItem(v)) => return Some(v),
         Some(_) => continue,
         None => return None
       }
