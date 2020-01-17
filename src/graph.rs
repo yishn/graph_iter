@@ -215,16 +215,16 @@ mod tests {
   }
 
   struct NumberGraph {
-    max: usize
+    numbers: Vec<usize>
   }
 
   impl Graph<usize> for NumberGraph {
     type NeighborsIterator = Vec<usize>;
 
-    fn neighbors(&self, &vertex: &usize) -> Self::NeighborsIterator {
-      (2..self.max)
-      .map(|i| vertex * i)
-      .take_while(|&v| v <= self.max)
+    fn neighbors(&self, vertex: &usize) -> Self::NeighborsIterator {
+      self.numbers.iter()
+      .filter(|&v| v != vertex && v % vertex == 0)
+      .copied()
       .collect()
     }
   }
@@ -286,7 +286,7 @@ mod tests {
   #[test]
   fn test_dfs_postordering() {
     let graph = NumberGraph {
-      max: 10
+      numbers: vec![2, 4, 6, 8, 12]
     };
 
     let mut topological_order = graph.dfs(&1).post_iter().collect::<Vec<_>>();
