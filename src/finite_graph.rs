@@ -203,7 +203,7 @@ impl<V, E> Graph<Id> for FiniteGraph<V, E> {
   }
 }
 
-impl<V, E> ReversableGraph<Id> for FiniteGraph<V, E> {
+impl<V, E> ReversibleGraph<Id> for FiniteGraph<V, E> {
   type ReverseNeighborsIterator = Vec<Id>;
 
   fn reverse_neighbors(&self, vertex: &Id) -> Vec<Id> {

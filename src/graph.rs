@@ -76,13 +76,13 @@ pub trait Graph<V: Vertex> where Self: Sized {
   }
 
   /// Returns a graph by reversing all edges.
-  fn rev(&self) -> Reversed<'_, Self> where Self: ReversableGraph<V> {
+  fn rev(&self) -> Reversed<'_, Self> where Self: ReversibleGraph<V> {
     Reversed::new(self)
   }
 }
 
 /// A graph that is able to travel vertices along edges backwards.
-pub trait ReversableGraph<V: Vertex>: Graph<V> {
+pub trait ReversibleGraph<V: Vertex>: Graph<V> {
   type ReverseNeighborsIterator: IntoIterator<Item = V>;
 
   /// Generates a list of adjacent vertices that can be reached from `vertex` by traveling along an edge backwards.
@@ -207,8 +207,7 @@ mod tests {
     type NeighborsIterator = Vec<Position>;
 
     fn neighbors(&self, &(x, y): &Position) -> Vec<Position> {
-      [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)].into_iter()
-      .cloned()
+      vec![(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)].into_iter()
       .filter(|v| !self.blocked.contains(v))
       .collect()
     }

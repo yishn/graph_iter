@@ -108,7 +108,7 @@ pub enum PrePostItem<V> {
 pub(crate) enum DfsInnerIterEvent<V> {
   PreorderItem(V),
   PostorderItem(V),
-  CycleEdge(V, V),
+  CycleEdge(V, V)
 }
 
 #[derive(Clone)]
@@ -116,7 +116,8 @@ pub struct DfsVertexTrav<'a, G, V> {
   graph: &'a G,
   start: V,
   queue: DfsContainer<(V, Option<V>)>,
-  predecessor_finished_map: HashMap<V, (Option<V>, bool)>
+  predecessor_finished_map: HashMap<V, (Option<V>, bool)>,
+  reached_cycle: bool
 }
 
 impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
@@ -128,31 +129,36 @@ impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
       graph,
       start: start.clone(),
       queue: container,
-      predecessor_finished_map: HashMap::new()
+      predecessor_finished_map: HashMap::new(),
+      reached_cycle: false
     }
   }
 
   pub(crate) fn next_inner(&mut self) -> Option<DfsInnerIterEvent<V>> {
     let vertex = loop {
-      let item = self.queue.peek();
+      let item = self.queue.peek().cloned();
+      let item = item.as_ref();
       let predecessor_finished_map = &mut self.predecessor_finished_map;
 
       match (item, item.and_then(|(v, _)| predecessor_finished_map.get_mut(v))) {
-        (_, Some((_, finished))) => {
-          let item = self.queue.pop();
+        (Some(_), Some((predecessor, finished))) => {
+          let (v, p) = self.queue.pop().unwrap();
 
           if *finished {
             continue;
-          } else {
+          } else if predecessor == &p {
             *finished = true;
-            return item.map(|(v, _)| DfsInnerIterEvent::PostorderItem(v));
+            return Some(DfsInnerIterEvent::PostorderItem(v.clone()));
+          } else {
+            self.reached_cycle = true;
+            return Some(DfsInnerIterEvent::CycleEdge(p.unwrap(), v.clone()))
           }
         },
         (Some((v, p)), None) => {
           predecessor_finished_map.insert(v.clone(), (p.clone(), false));
           break v.clone();
         },
-        (None, None) => return None
+        (None, _) => return None
       }
     };
 
@@ -163,12 +169,26 @@ impl<'a, G: Graph<V>, V: Vertex> DfsVertexTrav<'a, G, V> {
     Some(DfsInnerIterEvent::PreorderItem(vertex))
   }
 
+  pub(crate) fn next_cycle<'s>(&'s mut self) -> Option<(V, V)> {
+    loop {
+      match self.next_inner() {
+        Some(DfsInnerIterEvent::CycleEdge(v, w)) => break Some((v, w)),
+        Some(_) => continue,
+        None => return None
+      }
+    }
+  }
+
   pub fn pre_post_iter(&mut self) -> PrePostIter<'_, 'a, G, V> {
     PrePostIter::new(self)
   }
 
   pub fn post_iter(&mut self) -> PostIter<'_, 'a, G, V> {
     PostIter::new(self)
+  }
+
+  pub fn reached_cycle(&self) -> bool {
+    self.reached_cycle
   }
 }
 
